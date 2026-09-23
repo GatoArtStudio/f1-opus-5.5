@@ -7,7 +7,8 @@ import type { ExitLight } from "@/pit-stop/domain/pit-stop";
 const ROAD_HALF_WIDTH = 2.7;
 const BAY_LENGTH = 8;
 const BAY_HALF_DEPTH = 2.2;
-const GARAGE = { near: 21.4, depth: 4.2, height: 4.6 };
+/** Outer edge of the apron where the cars park, across the track. */
+const APRON_OUTER = 21.4;
 /** Pit markings sit over the pit road and the track's edge, so they are pulled toward the camera harder. */
 const ON_ROAD = { polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 } as const;
 
@@ -48,24 +49,6 @@ class Strips {
   }
 }
 
-function garageTexture(bays: number, anisotropy: number): THREE.CanvasTexture {
-  return canvasTexture(2048, (g, s) => {
-    g.fillStyle = "#8b9099";
-    g.fillRect(0, 0, s, s);
-    const w = s / bays;
-    for (let k = 0; k < bays; k++) {
-      g.fillStyle = "#15171d"; // the open bay
-      g.fillRect(k * w + 8, s * 0.32, w - 16, s * 0.68);
-      g.fillStyle = k % 2 ? "#e10600" : "#1e78d2"; // team stripe over each door
-      g.fillRect(k * w + 8, s * 0.2, w - 16, s * 0.07);
-      g.fillStyle = "#e8e8e8";
-      g.font = `bold ${Math.round(w * 0.5)}px system-ui, sans-serif`;
-      g.textAlign = "center";
-      g.fillText(String(k + 1), k * w + w / 2, s * 0.16);
-    }
-  }, anisotropy, false);
-}
-
 function signTexture(text: string, anisotropy: number): THREE.CanvasTexture {
   return canvasTexture(256, (g, s) => {
     g.fillStyle = "#0d47a1";
@@ -87,7 +70,7 @@ export interface PitLaneScenery {
   setExitLight(light: ExitLight): void;
 }
 
-/** Pit road, its markings, the box bays, the garages, the entry/exit boards and the exit light. */
+/** Pit road, its markings, the box bays, the entry/exit boards and the exit light. */
 export function buildPitLane(root: THREE.Object3D, circuit: Circuit, anisotropy: number): PitLaneScenery {
   const lane = new PitLane(circuit);
   const from = PIT.entryStart, to = lane.exitEnd, step = circuit.ds * 2;
@@ -95,8 +78,8 @@ export function buildPitLane(root: THREE.Object3D, circuit: Circuit, anisotropy:
   const asphalt = canvasTexture(256, (g, s) => paintNoise(g, s, "#43454b", 0.22, 12000), anisotropy);
   const road = new Strips();
   road.add(circuit, lane, from, to, step, (u) => [lane.roadLateral(u) - ROAD_HALF_WIDTH, lane.roadLateral(u) + ROAD_HALF_WIDTH], 0.024);
-  // The apron in front of the garages, where the cars park.
-  road.add(circuit, lane, PIT.firstBox - 9, lane.boxPosition(lane.boxCount - 1) + 9, step, () => [PIT.fastLateral + 2.4, GARAGE.near], 0.024);
+  // The apron where the cars park in their boxes.
+  road.add(circuit, lane, PIT.firstBox - 9, lane.boxPosition(lane.boxCount - 1) + 9, step, () => [PIT.fastLateral + 2.4, APRON_OUTER], 0.024);
   root.add(
     road.mesh(new THREE.MeshStandardMaterial({ map: asphalt, roughness: 0.85, depthWrite: false, ...ON_ROAD }), FLAT_RENDER_ORDER.road),
   );
@@ -118,22 +101,6 @@ export function buildPitLane(root: THREE.Object3D, circuit: Circuit, anisotropy:
     lines.add(circuit, lane, u0, u1, 1, () => [far - 0.09, far + 0.09], 0.03);
   }
   root.add(lines.mesh(white, FLAT_RENDER_ORDER.marks));
-
-  // Garages behind the boxes.
-  const length = lane.boxCount * PIT.boxSpacing;
-  const middle = PIT.firstBox + ((lane.boxCount - 1) * PIT.boxSpacing) / 2;
-  const front = garageTexture(lane.boxCount, anisotropy);
-  const facade = new THREE.MeshStandardMaterial({ map: front, roughness: 0.8 });
-  const plain = new THREE.MeshStandardMaterial({ color: 0x5c616b, roughness: 0.9 });
-  const garage = new THREE.Mesh(new THREE.BoxGeometry(GARAGE.depth, GARAGE.height, length), [facade, plain, plain, plain, plain, plain]);
-  const mid = lane.toLapDistance(middle);
-  const i = circuit.indexAt(mid);
-  const centre = circuit.pointAt(mid, GARAGE.near + GARAGE.depth / 2);
-  garage.position.set(centre.x, circuit.elevation[i] + GARAGE.height / 2 - 0.4, centre.z);
-  garage.rotation.y = circuit.headingAt(i); // local +X (the facade) then points toward the track
-  garage.castShadow = true;
-  garage.receiveShadow = true;
-  root.add(garage);
 
   // Boards at the entry and the exit of the pit lane.
   const post = new THREE.MeshStandardMaterial({ color: 0x2b2d33, roughness: 0.6, metalness: 0.5 });

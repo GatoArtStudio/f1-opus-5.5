@@ -71,7 +71,7 @@ Con las bandas actuales, la diferencia entre el mejor y el peor bot en una vuelt
 
 **Neumáticos.** Seis compuestos: blanda, media, dura, intermedia, lluvia y nieve (`tyres/domain/tyre.ts`). Su agarre depende del agua y la cobertura de la pista, de la temperatura (el tema la cambia: el volcán quema las blandas, el hielo castiga a las duras) y del desgaste, que además tiene un "precipicio" cerca del final. Los pintan en las ruedas y en la torre de tiempos. En el menú puedes elegir con qué salir, o "Auto" para el recomendado.
 
-**Boxes.** Hay una calle de boxes junto a la recta de salida, con carril rápido a 80 km/h, un cajón por coche, garajes y un semáforo de salida (`pit-stop/`). Pulsa `B` para pedir parada: al final de la vuelta el coche pasa a piloto automático, entra, se detiene en su box y allí eliges el neumático (teclas `1`-`6` o clic; si no eliges en 8 s, monta el recomendado). Mientras tanto ves a los mecánicos de tu equipo cambiar las ruedas con el coche elevado, y al terminar el hombre de la piruleta pasa de rojo a verde.
+**Boxes.** Hay una calle de boxes junto a la recta de salida, con carril rápido a 80 km/h, un cajón por coche y un semáforo de salida (`pit-stop/`). Pulsa `B` para pedir parada: al final de la vuelta el coche pasa a piloto automático, entra, se detiene en su box y allí eliges el neumático (teclas `1`-`6` o clic; si no eliges en 8 s, monta el recomendado). Mientras tanto ves a los mecánicos de tu equipo cambiar las ruedas con el coche elevado, y al terminar el hombre de la piruleta pasa de rojo a verde.
 
 - **Señal de boxes:** cuando compensa parar (cambia el clima, neumáticos gastados o falta la parada obligatoria), el muro de boxes te saca el panel "BOX · BOX" con el neumático que recomienda y el motivo, y un aviso de radio. Pulsa `B` para aceptar.
 - **Regla de dos compuestos:** como en F1, en una carrera seca de 3 o más vueltas hay que usar dos compuestos distintos (opcional en el menú); si no, +20 s de penalización. La regla se anula si la pista se moja o se cubre. Por eso todos los bots paran, cada uno en la vuelta que elige.
@@ -128,7 +128,7 @@ Para cambiar el circuito fijo, edita `WEB_GP_CIRCUIT.controlPoints` en `src/circ
 
 En el menú, "Circuito generado (seed)" crea un circuito a partir de un texto: la misma seed da siempre el mismo circuito, para compartirla o guardarla. `generateCircuitLayout(seed)` (`src/circuit/domain/circuit-generator.ts`) decide con esa seed:
 
-- **El trazado**, validado (radio mínimo de curva, separación entre tramos, longitud) para que siempre sea jugable.
+- **El trazado**, con un carácter que dice cuántas curvas tiene: rápido, mixto, técnico o muy sinuoso (`circuit-character.ts`). Los técnicos y sinuosos llevan horquillas en U hacia dentro y hacia fuera, chicanes y ángulos que obligan a frenar; cada carácter exige un mínimo de curvas, de curvas cerradas y un máximo de recta sin curvas. Se valida (radio mínimo de curva, separación entre tramos, longitud) para que siempre sea jugable. La línea de salida queda en medio de la recta.
 - **El tema** (`circuit-theme.ts`): bosque, hielo, desierto, volcán o ciudad. Cambia cielo, luz, niebla, terreno, colores, props y horizonte (`infrastructure/circuit-palette.ts`).
 - **Los desniveles** (`elevation-profile.ts`): pendientes de hasta el 9 %, con la recta de salida siempre plana. Afectan a la física y a la IA.
 - **Los túneles** (`circuit-features.ts`), solo en tramos rectos y lejos de la salida.

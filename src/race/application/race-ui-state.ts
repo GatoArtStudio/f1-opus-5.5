@@ -53,6 +53,8 @@ export interface CircuitInfo {
   name: string;
   lengthKm: number;
   themeLabel: string;
+  /** "Rápido", "Técnico"...; null for the hand-made circuit. */
+  characterLabel: string | null;
   /** Height between the lowest and highest point of the track, in metres. */
   climb: number;
   tunnels: number;

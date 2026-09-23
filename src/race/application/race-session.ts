@@ -1,4 +1,5 @@
 import { Circuit } from "@/circuit/domain/circuit";
+import { CHARACTER_LABELS } from "@/circuit/domain/circuit-character";
 import { THEME_PROFILES } from "@/circuit/domain/circuit-theme";
 import { isSameCircuitSelection, resolveCircuitLayout, type CircuitSelection } from "@/circuit/domain/circuit-selection";
 import { CHOICE_TIMEOUT } from "@/pit-stop/domain/pit-stop";
@@ -51,6 +52,7 @@ const infoOf = (circuit: Circuit): CircuitInfo => ({
   name: circuit.name,
   lengthKm: circuit.length / 1000,
   themeLabel: THEME_PROFILES[circuit.theme].label,
+  characterLabel: circuit.character ? CHARACTER_LABELS[circuit.character] : null,
   climb: Math.max(...circuit.elevation) - Math.min(...circuit.elevation),
   tunnels: circuit.tunnels.length,
 });

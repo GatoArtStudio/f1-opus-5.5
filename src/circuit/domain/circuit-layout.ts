@@ -1,3 +1,4 @@
+import type { CircuitCharacter } from "./circuit-character";
 import type { CircuitThemeId } from "./circuit-theme";
 import type { ElevationSpec } from "./elevation-profile";
 import type { TunnelSpan } from "./tunnel";
@@ -13,6 +14,8 @@ export interface CircuitLayout {
   readonly sampleSpacing: number;
   /** Closed loop of (x, z) points; index 0 is the start/finish line. */
   readonly controlPoints: readonly (readonly [number, number])[];
+  /** How twisty a generated circuit is; unset for hand-made ones. */
+  readonly character?: CircuitCharacter;
   /** Look of the surroundings; flat forest when omitted. */
   readonly theme?: CircuitThemeId;
   /** Seeds the scenery (hills, props) so the same layout always looks the same. */

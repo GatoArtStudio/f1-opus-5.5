@@ -1,5 +1,6 @@
 import { angleDiff, clamp, wrapIndex } from "@/shared/domain/math";
 import type { CircuitLayout } from "./circuit-layout";
+import type { CircuitCharacter } from "./circuit-character";
 import type { CircuitThemeId } from "./circuit-theme";
 import { sampleClosedSpline } from "./closed-spline";
 import { elevationAt } from "./elevation-profile";
@@ -32,6 +33,8 @@ const RACING_LINE_EDGE_MARGIN = 1.6;
 export class Circuit {
   readonly name: string;
   readonly theme: CircuitThemeId;
+  /** How twisty the layout is; unset for hand-made circuits. */
+  readonly character: CircuitCharacter | null;
   /** Seeds everything random about the surroundings. */
   readonly seed: string;
   readonly tunnels: readonly TunnelSpan[];
@@ -67,6 +70,7 @@ export class Circuit {
   constructor(layout: CircuitLayout) {
     this.name = layout.name;
     this.theme = layout.theme ?? "forest";
+    this.character = layout.character ?? null;
     this.seed = layout.seed ?? layout.name;
     this.tunnels = layout.tunnels ?? [];
     this.halfWidth = layout.width / 2;

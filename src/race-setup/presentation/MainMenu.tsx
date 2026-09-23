@@ -124,6 +124,7 @@ export function MainMenu({ settings, circuit, outline, weather, onChange, onStar
           )}
           <p className={`${styles.circuitInfo} ${styles.wide}`}>
             {circuit.name} · {circuit.lengthKm.toFixed(2)} km · {circuit.themeLabel}
+            {circuit.characterLabel && ` · ${circuit.characterLabel}`}
             {circuit.climb >= 1 && ` · Desnivel ${Math.round(circuit.climb)} m`}
             {circuit.tunnels > 0 && ` · ${circuit.tunnels} ${circuit.tunnels === 1 ? "túnel" : "túneles"}`}
           </p>
