@@ -1,0 +1,24 @@
+:root {
+  --red: #e10600;
+  --panel: rgba(12, 13, 20, 0.78);
+  --panel-line: rgba(255, 255, 255, 0.08);
+  --text: #f3f4f6;
+  --dim: #9aa0ab;
+  --purple: #b138dd;
+  --green: #22d36b;
+  --font: var(--font-titillium), system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #0b0c10;
+  color: var(--text);
+  font-family: var(--font);
+}

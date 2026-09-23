@@ -1,0 +1,432 @@
+.hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  user-select: none;
+}
+
+.panel {
+  position: absolute;
+  background: var(--panel);
+  border: 1px solid var(--panel-line);
+  border-radius: 10px;
+  backdrop-filter: blur(6px);
+}
+
+/* ---------- Timing tower ---------- */
+.tower {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  width: 190px;
+  font-size: 14px;
+}
+
+.towerHead {
+  background: var(--panel);
+  border-radius: 8px 8px 0 0;
+  overflow: hidden;
+  border: 1px solid var(--panel-line);
+}
+
+.brand {
+  background: var(--red);
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: 2px;
+  padding: 3px 10px;
+  font-size: 13px;
+}
+
+.lap {
+  padding: 4px 10px 6px;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.lap span {
+  font-size: 12px;
+  color: var(--dim);
+  letter-spacing: 1px;
+  margin-right: 4px;
+}
+
+.lap small {
+  font-size: 15px;
+  color: var(--dim);
+}
+
+.towerList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--panel);
+  border-radius: 0 0 8px 8px;
+  border: 1px solid var(--panel-line);
+  border-top: 0;
+}
+
+.towerList li {
+  display: grid;
+  grid-template-columns: 24px 4px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 10px;
+  height: 26px;
+}
+
+.towerList li + li {
+  border-top: 1px solid var(--panel-line);
+}
+
+.towerList b {
+  text-align: right;
+  font-weight: 700;
+}
+
+.towerList i {
+  width: 4px;
+  height: 16px;
+  border-radius: 2px;
+}
+
+.towerList span {
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.towerList em {
+  font-style: normal;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+}
+
+.towerList li.me {
+  background: rgba(255, 255, 255, 0.92);
+  color: #111;
+  border-radius: 4px;
+}
+
+.towerList li.me em {
+  color: #444;
+}
+
+/* ---------- Minimap ---------- */
+.minimap {
+  top: 16px;
+  right: 16px;
+  width: 260px;
+  height: 200px;
+  padding: 4px;
+}
+
+.canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ---------- Position & lap times ---------- */
+.positionPanel {
+  left: 16px;
+  bottom: 16px;
+  padding: 10px 16px 12px;
+  display: flex;
+  gap: 18px;
+  align-items: center;
+}
+
+.position {
+  font-weight: 900;
+  font-style: italic;
+  line-height: 1;
+  display: flex;
+  align-items: baseline;
+}
+
+.positionP {
+  font-size: 30px;
+  color: var(--red);
+  margin-right: 2px;
+}
+
+.positionValue {
+  font-size: 64px;
+}
+
+.positionTotal {
+  font-size: 22px;
+  color: var(--dim);
+  margin-left: 4px;
+}
+
+.times {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 1px 12px;
+  margin: 0;
+  font-size: 15px;
+}
+
+.times dt {
+  color: var(--dim);
+  font-size: 12px;
+  letter-spacing: 1px;
+  align-self: center;
+}
+
+.times dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.times dd.best {
+  color: #d59bff;
+}
+
+/* ---------- Speedometer ---------- */
+.speedo {
+  right: 16px;
+  bottom: 16px;
+  width: 230px;
+  height: 200px;
+}
+
+.speedo .canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.speedRead {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 70px;
+  text-align: center;
+}
+
+.speed {
+  font-size: 58px;
+  font-weight: 900;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  font-style: italic;
+}
+
+.unit {
+  font-size: 12px;
+  color: var(--dim);
+  letter-spacing: 2px;
+}
+
+.gear {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  background: var(--red);
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  font-size: 26px;
+}
+
+/* ---------- Start lights ---------- */
+.lights {
+  position: absolute;
+  top: 16%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 12px;
+}
+
+.pod {
+  background: #111;
+  border-radius: 10px;
+  padding: 8px;
+  display: grid;
+  gap: 8px;
+  border: 2px solid #222;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+}
+
+.bulb {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #2a0606;
+  display: block;
+}
+
+.pod.on .bulb {
+  background: #ff1a1a;
+  box-shadow: 0 0 22px 6px rgba(255, 30, 30, 0.8);
+}
+
+/* ---------- Messages ---------- */
+.message {
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  font-size: 34px;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: 2px;
+  text-align: center;
+  background: var(--panel);
+  padding: 8px 26px;
+  border-radius: 8px;
+  border-left: 6px solid var(--red);
+  white-space: nowrap;
+  animation: message-life var(--message-duration, 2s) ease forwards;
+}
+
+@keyframes message-life {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -10px);
+  }
+  8%,
+  88% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, 0);
+  }
+}
+
+.big {
+  font-size: 48px;
+}
+
+.go {
+  font-size: 48px;
+  border-left-color: var(--green);
+  color: var(--green);
+}
+
+.fastest {
+  border-left-color: var(--purple);
+  color: #e2b6ff;
+}
+
+.info {
+  font-size: 20px;
+  top: 22%;
+}
+
+.wrongWay {
+  position: absolute;
+  top: 42%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(225, 6, 0, 0.9);
+  padding: 8px 24px;
+  border-radius: 8px;
+  font-weight: 900;
+  font-size: 30px;
+  letter-spacing: 2px;
+  animation: blink 0.8s infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.hint {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  text-shadow: 0 1px 2px #000;
+}
+
+/* ---------- Small screens ---------- */
+@media (max-width: 760px) {
+  .tower {
+    width: 150px;
+    font-size: 12px;
+    top: 8px;
+    left: 8px;
+  }
+
+  .towerList li {
+    height: 20px;
+    padding: 1px 6px;
+    gap: 5px;
+  }
+
+  .minimap {
+    width: 160px;
+    height: 124px;
+    top: 8px;
+    right: 8px;
+  }
+
+  .positionPanel {
+    left: 8px;
+    bottom: 8px;
+    padding: 6px 10px;
+    gap: 10px;
+  }
+
+  .positionValue {
+    font-size: 40px;
+  }
+
+  .times {
+    font-size: 12px;
+  }
+
+  .speedo {
+    width: 150px;
+    height: 130px;
+    right: 8px;
+    bottom: 8px;
+  }
+
+  .speedRead {
+    top: 44px;
+  }
+
+  .speed {
+    font-size: 36px;
+  }
+
+  .gear {
+    width: 30px;
+    height: 30px;
+    font-size: 18px;
+    bottom: 6px;
+  }
+
+  .bulb {
+    width: 26px;
+    height: 26px;
+  }
+
+  .message {
+    font-size: 22px;
+  }
+
+  .big,
+  .go {
+    font-size: 28px;
+  }
+
+  .hint {
+    display: none;
+  }
+}

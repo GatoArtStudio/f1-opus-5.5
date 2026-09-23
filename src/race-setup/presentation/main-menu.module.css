@@ -1,0 +1,99 @@
+.overlay {
+  place-items: center start;
+  padding-left: 7vw;
+}
+
+.title {
+  margin: 0;
+  font-size: 46px;
+  font-weight: 900;
+  font-style: italic;
+  line-height: 1;
+  letter-spacing: 1px;
+}
+
+.title em {
+  color: var(--red);
+}
+
+.stripe {
+  display: block;
+  width: 70px;
+  height: 6px;
+  background: var(--red);
+  margin-bottom: 14px;
+  transform: skewX(-20deg);
+}
+
+.subtitle {
+  color: var(--dim);
+  margin: 8px 0 22px;
+}
+
+.options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.options label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--dim);
+  text-transform: uppercase;
+}
+
+.options select {
+  font: inherit;
+  font-size: 16px;
+  color: var(--text);
+  background: #1b1d27;
+  border: 1px solid #2c2f3b;
+  border-radius: 8px;
+  padding: 9px 10px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.start {
+  width: 100%;
+  font-size: 20px;
+  padding: 13px;
+}
+
+.controls {
+  margin-top: 22px;
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  color: #cfd3da;
+}
+
+.controls kbd {
+  display: inline-block;
+  min-width: 24px;
+  padding: 1px 6px;
+  margin-right: 3px;
+  text-align: center;
+  border-radius: 5px;
+  background: #262a36;
+  border: 1px solid #3a3f4f;
+  border-bottom-width: 2px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .overlay {
+    place-items: center;
+    padding-left: 16px;
+  }
+
+  .title {
+    font-size: 34px;
+  }
+}

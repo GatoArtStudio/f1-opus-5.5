@@ -1,17 +1,18 @@
 # Web Grand Prix — carreras de F1 en 3D
 
-Juego de carreras de Fórmula 1 para un jugador, hecho solo con archivos estáticos (HTML, CSS y JavaScript con módulos ES) y [three.js](https://threejs.org/) incluido en `vendor/`. Compites contra coches controlados por la IA en un circuito de 3,8 km.
+Juego de Fórmula 1 para un jugador contra la IA, en el navegador, sobre un circuito de 3,8 km.
+Hecho con **Next.js 16** (App Router), **React 19**, **TypeScript**, **three.js** y **CSS** sin frameworks (CSS Modules + una hoja global).
 
-## Cómo ejecutarlo
-
-Los módulos ES no se cargan con `file://`, así que hay que servir la carpeta con cualquier servidor estático:
+## Scripts
 
 ```bash
-python3 -m http.server 8000
-# y abre http://localhost:8000
+npm install
+npm run dev      # desarrollo en http://localhost:3000
+npm run build    # export estático en ./out
+npm run lint
 ```
 
-(También vale `npx serve`, nginx, GitHub Pages, etc.)
+`next.config.ts` usa `output: "export"`, así que `npm run build` genera archivos estáticos en `out/`. Se pueden servir con cualquier servidor estático, por ejemplo `npx serve out`.
 
 ## Controles
 
@@ -24,31 +25,40 @@ python3 -m http.server 8000
 | Volver a poner el coche en pista | `R` | |
 | Sonido on/off | `M` | |
 | Pausa | `Esc` / `P` | |
+| Empezar (desde el menú) | `Enter` | |
 
-## Qué incluye
+## Arquitectura: Screaming Architecture
 
-- **HUD**: velocidad (km/h), marcha, arco de RPM con luces de cambio, posición (P x/N), vuelta actual/total, tiempo de vuelta actual, última y mejor, torre de tiempos con diferencias al líder, y **minimapa** con todos los coches.
-- **Salida estilo F1**: cinco luces rojas (en el HUD y en el pórtico 3D) y un tiempo de espera aleatorio antes de que se apaguen.
-- **IA**: los bots siguen una trazada precalculada, frenan según un perfil de velocidad, adelantan por el lado libre y se recuperan si se quedan atascados.
-- **Física**: modelo arcade con agarre lateral, subviraje sobre la hierba, pianos, choques con los muros y entre coches.
-- **Opciones**: número de vueltas, rivales (3–11), dificultad y posición de salida.
-- **Tabla de resultados** al terminar: tiempos, diferencias, mejor vuelta y posición de salida.
+Las carpetas de primer nivel de `src/` llevan el nombre de los conceptos del juego, no de roles técnicos. Cada una se divide en capas:
 
-## Estructura
+- **domain/**: reglas puras en TypeScript, sin three.js, React ni DOM. Son deterministas y se pueden probar en Node.
+- **application/**: casos de uso y los puertos (interfaces) que necesitan del exterior.
+- **infrastructure/**: adaptadores al navegador: three.js, Web Audio, teclado y mando.
+- **presentation/**: componentes React y CSS Modules.
 
 ```
-index.html          HUD, menús y mapa de importación
-css/styles.css      Estilos del HUD y de los menús
-js/config.js        Ajustes: circuito, coche, dificultad, pilotos
-js/track.js         Muestreo del circuito, proyección, trazada y perfil de velocidad
-js/car.js           Física del coche y modelo 3D procedural
-js/ai.js            Pilotos de la IA
-js/scenery.js       Asfalto, pianos, muros, gradas, árboles, pórtico de salida
-js/hud.js           HUD y minimapa
-js/input.js         Teclado y mando
-js/audio.js         Sonido de motor sintetizado (Web Audio)
-js/main.js          Bucle del juego, estados de carrera, vueltas y cámaras
-vendor/             three.js r170
+src/
+├── app/                     Solo rutas de Next.js (layout, page, globals.css)
+├── circuit/                 El circuito
+│   ├── domain/              Spline, muestreo, proyección, muros, trazada ideal
+│   └── infrastructure/      Escenario 3D: asfalto, pianos, muros, gradas, pórtico
+├── race-car/                El coche
+│   ├── domain/              Física arcade, especificaciones, controles
+│   └── infrastructure/      Modelo 3D procedural
+├── ai-driver/domain/        Pilotos IA: persecución pura, perfil de velocidad, adelantamientos
+├── race/                    La carrera
+│   ├── domain/              Parrilla, vueltas, clasificación, diferencias, colisiones, semáforo
+│   ├── application/         RaceSession (máquina de estados y bucle), puertos, DTO de UI
+│   ├── infrastructure/      Vista three.js, cámaras, bucle de animación, raíz de composición
+│   └── presentation/        <RaceGame/>, menú de pausa, hook de estado
+├── race-setup/              Ajustes de carrera (vueltas, rivales, dificultad, salida) + menú principal
+├── race-results/            Clasificación final + pantalla de resultados
+├── hud/presentation/        Velocidad, posición, tiempos, torre de tiempos, minimapa, semáforo
+├── player-controls/         Adaptador de teclado + mando (puerto PlayerControls)
+├── engine-sound/            Adaptador de Web Audio (puerto EngineSound)
+└── shared/                  Utilidades matemáticas, formato de tiempos, estilos de UI comunes
 ```
 
-Para cambiar el circuito, edita `TRACK.controlPoints` en `js/config.js`. Son puntos (x, z) en metros de una curva cerrada, y el punto 0 es la línea de meta.
+Las dependencias apuntan hacia dentro: `presentation → application → domain`, e `infrastructure` implementa los puertos que define `application`. La raíz de composición, que conecta todas las piezas, es `race/infrastructure/create-race-game.ts`.
+
+Para cambiar el circuito, edita `WEB_GP_CIRCUIT.controlPoints` en `src/circuit/domain/circuit-layout.ts`. Son puntos (x, z) en metros de un circuito cerrado, y el punto 0 es la línea de meta.
