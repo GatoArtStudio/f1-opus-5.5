@@ -3,6 +3,8 @@ import { clamp } from "@/shared/domain/math";
 import type { CarControls } from "./car-controls";
 import { CAR_SPECS, GEAR_TOP_SPEEDS, type Gear } from "./car-specs";
 
+const GRAVITY = 9.81;
+
 const scratch: TrackPosition = { index: 0, lateral: 0, dist: 0 };
 
 /**
@@ -29,6 +31,9 @@ export class RaceCar {
   index = 0;
   lateral = 0;
   trackDist = 0;
+  /** Road height under the car and the slope of the road along its heading (rad, > 0 nose up). */
+  y = 0;
+  pitch = 0;
 
   readonly controls: CarControls = { throttle: 0, brake: 0, steer: 0 };
 
@@ -47,6 +52,7 @@ export class RaceCar {
     this.index = pr.index;
     this.lateral = pr.lateral;
     this.trackDist = pr.dist;
+    this.updateRoadHeight();
   }
 
   /** Puts the car back on the asphalt, facing the direction of travel. */
@@ -94,6 +100,7 @@ export class RaceCar {
       else if (vf > -CAR_SPECS.reverseSpeed) a -= brake * 7;
     }
     a -= Math.sign(vf) * (0.4 + 0.0009 * vf * vf);
+    a -= GRAVITY * this.slopeAlongHeading(sh, ch);
     if (this.surface === "grass") {
       a -= Math.sign(vf) * CAR_SPECS.grassDrag * (Math.abs(vf) > CAR_SPECS.grassMaxSpeed ? 2.2 : 1);
     }
@@ -133,6 +140,18 @@ export class RaceCar {
     this.index = pr.index;
     this.lateral = pr.lateral;
     this.trackDist = pr.dist;
+    this.updateRoadHeight();
+  }
+
+  /** Gradient in the direction the car is pointing. */
+  private slopeAlongHeading(sh: number, ch: number): number {
+    const c = this.circuit, i = this.index;
+    return c.grade[i] * (sh * c.tx[i] + ch * c.tz[i]);
+  }
+
+  private updateRoadHeight(): void {
+    this.y = this.circuit.elevationAt(this.trackDist);
+    this.pitch = Math.atan(this.slopeAlongHeading(Math.sin(this.heading), Math.cos(this.heading)));
   }
 
   collideWalls(): void {

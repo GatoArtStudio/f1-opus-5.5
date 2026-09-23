@@ -40,6 +40,10 @@ export interface RaceMessage {
 export interface CircuitInfo {
   name: string;
   lengthKm: number;
+  themeLabel: string;
+  /** Height between the lowest and highest point of the track, in metres. */
+  climb: number;
+  tunnels: number;
 }
 
 export interface RaceUiState {

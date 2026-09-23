@@ -1,7 +1,10 @@
 import { angleDiff, clamp, wrapIndex } from "@/shared/domain/math";
 import type { CircuitLayout } from "./circuit-layout";
+import type { CircuitThemeId } from "./circuit-theme";
 import { sampleClosedSpline } from "./closed-spline";
+import { elevationAt } from "./elevation-profile";
 import { minFilterLoop, smoothLoop } from "./signal-filters";
+import { distanceToTunnel, TUNNEL, type TunnelSpan } from "./tunnel";
 
 export type Surface = "track" | "kerb" | "grass";
 
@@ -28,6 +31,10 @@ const RACING_LINE_EDGE_MARGIN = 1.6;
  */
 export class Circuit {
   readonly name: string;
+  readonly theme: CircuitThemeId;
+  /** Seeds everything random about the surroundings. */
+  readonly seed: string;
+  readonly tunnels: readonly TunnelSpan[];
   readonly halfWidth: number;
   readonly kerbWidth: number;
   readonly length: number;
@@ -52,9 +59,16 @@ export class Circuit {
   /** Lateral offset of the racing line and its curvature. */
   readonly lineOffset: Float32Array;
   readonly lineCurv: Float32Array;
+  /** Height of the road surface at each sample, in metres. */
+  readonly elevation: Float32Array;
+  /** Gradient along the direction of travel (rise over run); > 0 is uphill. */
+  readonly grade: Float32Array;
 
   constructor(layout: CircuitLayout) {
     this.name = layout.name;
+    this.theme = layout.theme ?? "forest";
+    this.seed = layout.seed ?? layout.name;
+    this.tunnels = layout.tunnels ?? [];
     this.halfWidth = layout.width / 2;
     this.kerbWidth = layout.kerbWidth;
 
@@ -105,8 +119,23 @@ export class Circuit {
         wr[i] = base;
       }
     }
+    // Inside a tunnel the barriers hug the walls, funnelling in ahead of each portal.
+    for (let i = 0; i < N && this.tunnels.length; i++) {
+      const t = Math.min(1, distanceToTunnel(this.tunnels, i * this.ds) / TUNNEL.funnel);
+      const limit = TUNNEL.wallOffset + t * (base - TUNNEL.wallOffset);
+      wl[i] = Math.min(wl[i], limit);
+      wr[i] = Math.min(wr[i], limit);
+    }
     this.wallL = smoothLoop(minFilterLoop(wl, 15), 10);
     this.wallR = smoothLoop(minFilterLoop(wr, 15), 10);
+
+    this.elevation = new Float32Array(N);
+    if (layout.elevation) {
+      for (let i = 0; i < N; i++) this.elevation[i] = elevationAt(layout.elevation, i * this.ds, this.length);
+    }
+    const rise = new Float32Array(N);
+    for (let i = 0; i < N; i++) rise[i] = (this.elevation[this.wrap(i + 1)] - this.elevation[this.wrap(i - 1)]) / (2 * this.ds);
+    this.grade = smoothLoop(rise, 3);
 
     const line = this.computeRacingLine(this.halfWidth - RACING_LINE_EDGE_MARGIN);
     this.lineOffset = line.offset;
@@ -168,6 +197,13 @@ export class Circuit {
     const rx = this.rx[i] + (this.rx[j] - this.rx[i]) * t;
     const rz = this.rz[i] + (this.rz[j] - this.rz[i]) * t;
     return { x: cx + rx * lateral, z: cz + rz * lateral };
+  }
+
+  /** Road surface height at a distance along the lap. */
+  elevationAt(dist: number): number {
+    const f = (((dist % this.length) + this.length) % this.length) / this.ds;
+    const i = Math.floor(f), j = this.wrap(i + 1);
+    return this.elevation[i] + (this.elevation[j] - this.elevation[i]) * (f - i);
   }
 
   indexAt(dist: number): number {

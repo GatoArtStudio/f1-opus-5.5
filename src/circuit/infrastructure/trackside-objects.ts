@@ -1,11 +1,12 @@
 import * as THREE from "three";
-import type { Circuit, TrackPosition } from "@/circuit/domain/circuit";
-import { canvasTexture, FLAT_RENDER_ORDER, paintNoise } from "./canvas-texture";
+import type { Circuit } from "@/circuit/domain/circuit";
+import { canvasTexture, FLAT_RENDER_ORDER } from "./canvas-texture";
+import type { CircuitPalette } from "./circuit-palette";
 
-export function buildSky(scene: THREE.Object3D): void {
+export function buildSky(scene: THREE.Object3D, palette: CircuitPalette["sky"]): void {
   const radius = 4000;
   const geo = new THREE.SphereGeometry(radius, 32, 16);
-  const top = new THREE.Color(0x2f6fc4), horizon = new THREE.Color(0xcfe3f2), below = new THREE.Color(0x9fb8a0);
+  const top = new THREE.Color(palette.top), horizon = new THREE.Color(palette.horizon), below = new THREE.Color(palette.below);
   const pos = geo.attributes.position;
   const colors: number[] = [];
   const c = new THREE.Color();
@@ -22,23 +23,6 @@ export function buildSky(scene: THREE.Object3D): void {
   );
   sky.renderOrder = FLAT_RENDER_ORDER.sky;
   scene.add(sky);
-}
-
-export function buildGround(scene: THREE.Object3D, anisotropy: number): void {
-  const tex = canvasTexture(256, (g, s) => {
-    paintNoise(g, s, "#4b7d2e", 0.18, 9000);
-    g.fillStyle = "rgba(255,255,255,0.05)"; // mowing stripes
-    g.fillRect(0, 0, s / 2, s);
-  }, anisotropy);
-  tex.repeat.set(200, 200);
-  const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(6000, 6000),
-    new THREE.MeshStandardMaterial({ map: tex, roughness: 1, depthWrite: false }),
-  );
-  ground.rotation.x = -Math.PI / 2;
-  ground.receiveShadow = true;
-  ground.renderOrder = FLAT_RENDER_ORDER.ground;
-  scene.add(ground);
 }
 
 export function buildBarriers(scene: THREE.Object3D, circuit: Circuit, anisotropy: number): void {
@@ -63,7 +47,8 @@ export function buildBarriers(scene: THREE.Object3D, circuit: Circuit, anisotrop
       const i = k % N;
       const off = side > 0 ? circuit.wallR[i] : -circuit.wallL[i];
       const x = circuit.px[i] + circuit.rx[i] * off, z = circuit.pz[i] + circuit.rz[i] * off;
-      pos.push(x, 0, z, x, height, z);
+      const base = circuit.elevation[i] - 0.5; // sunk slightly into the ground beside the road
+      pos.push(x, base, z, x, circuit.elevation[i] + height, z);
       const u = (k * circuit.ds) / 2;
       uv.push(u, 0, u, 1);
       if (k < N) {
@@ -90,7 +75,7 @@ export interface StartGantry {
 export function buildStartGantry(scene: THREE.Object3D, circuit: Circuit): StartGantry {
   const i = circuit.indexAt(6);
   const group = new THREE.Group();
-  group.position.set(circuit.px[i], 0, circuit.pz[i]);
+  group.position.set(circuit.px[i], circuit.elevation[i], circuit.pz[i]);
   group.rotation.y = circuit.headingAt(i);
   const metal = new THREE.MeshStandardMaterial({ color: 0x2b2d33, roughness: 0.5, metalness: 0.6 });
   const span = circuit.halfWidth + 3;
@@ -176,7 +161,7 @@ export function buildGrandstands(scene: THREE.Object3D, circuit: Circuit): void 
     const i = circuit.indexAt(dist);
     const p = circuit.pointAt(dist, -(circuit.wallL[i] + 5));
     const stand = new THREE.Group();
-    stand.position.set(p.x, 0, p.z);
+    stand.position.set(p.x, circuit.elevation[i], p.z);
     stand.rotation.y = circuit.headingAt(i);
     const body = new THREE.Mesh(wedge, frameMat);
     body.castShadow = true;
@@ -192,44 +177,4 @@ export function buildGrandstands(scene: THREE.Object3D, circuit: Circuit): void 
     }
     scene.add(stand);
   }
-}
-
-export function buildTrees(scene: THREE.Object3D, circuit: Circuit): void {
-  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
-  for (let i = 0; i < circuit.n; i++) {
-    minX = Math.min(minX, circuit.px[i]);
-    maxX = Math.max(maxX, circuit.px[i]);
-    minZ = Math.min(minZ, circuit.pz[i]);
-    maxZ = Math.max(maxZ, circuit.pz[i]);
-  }
-  const pad = 250, count = 900;
-  const trunkGeo = new THREE.CylinderGeometry(0.3, 0.45, 3, 6).translate(0, 1.5, 0);
-  const leafGeo = new THREE.ConeGeometry(2.8, 8, 8).translate(0, 7, 0);
-  const trunks = new THREE.InstancedMesh(trunkGeo, new THREE.MeshStandardMaterial({ color: 0x5b3a21 }), count);
-  const leaves = new THREE.InstancedMesh(leafGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 }), count);
-  leaves.castShadow = true;
-  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3();
-  const up = new THREE.Vector3(0, 1, 0);
-  const c = new THREE.Color();
-  const proj: TrackPosition = { index: 0, lateral: 0, dist: 0 };
-  let placed = 0;
-  for (let tries = 0; placed < count && tries < count * 20; tries++) {
-    const x = minX - pad + Math.random() * (maxX - minX + pad * 2);
-    const z = minZ - pad + Math.random() * (maxZ - minZ + pad * 2);
-    circuit.project(x, z, -1, proj);
-    const wall = proj.lateral > 0 ? circuit.wallR[proj.index] : circuit.wallL[proj.index];
-    if (Math.abs(proj.lateral) < wall + 10 + Math.random() * 20) continue;
-    // Keep the grandstand area along the main straight clear.
-    if (Math.abs(proj.lateral) < 60 && (proj.dist < 220 || proj.dist > circuit.length - 320)) continue;
-    const scale = 0.7 + Math.random() * 0.8;
-    s.set(scale, scale * (0.8 + Math.random() * 0.5), scale);
-    q.setFromAxisAngle(up, Math.random() * Math.PI);
-    m.compose(p.set(x, 0, z), q, s);
-    trunks.setMatrixAt(placed, m);
-    leaves.setMatrixAt(placed, m);
-    leaves.setColorAt(placed, c.setHSL(0.27 + Math.random() * 0.08, 0.5, 0.2 + Math.random() * 0.12));
-    placed++;
-  }
-  trunks.count = leaves.count = placed;
-  scene.add(trunks, leaves);
 }

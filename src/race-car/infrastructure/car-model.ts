@@ -158,8 +158,9 @@ export class CarModel {
   }
 
   sync(car: RaceCar, dt: number): void {
-    this.root.position.set(car.x, 0, car.z);
-    this.root.rotation.y = car.heading;
+    this.root.position.set(car.x, car.y, car.z);
+    this.root.rotation.order = "YXZ";
+    this.root.rotation.set(-car.pitch, car.heading, 0); // nose up on climbs
     for (const w of this.wheels) w.rotation.x = car.wheelSpin;
     for (const p of this.steerPivots) p.rotation.y = -car.steerAngle;
     // A little pitch under braking / acceleration for weight transfer.

@@ -1,4 +1,5 @@
 import { Circuit } from "@/circuit/domain/circuit";
+import { THEME_PROFILES } from "@/circuit/domain/circuit-theme";
 import { isSameCircuitSelection, resolveCircuitLayout, type CircuitSelection } from "@/circuit/domain/circuit-selection";
 import { classifyRace } from "@/race-results/domain/classification";
 import { DEFAULT_RACE_SETTINGS, type RaceSettings } from "@/race-setup/domain/race-settings";
@@ -38,7 +39,13 @@ const ATTRACT_SETTINGS: RaceSettings = {
 type Listener = () => void;
 
 const outlineOf = (circuit: Circuit): CircuitOutline => ({ xs: circuit.px, zs: circuit.pz });
-const infoOf = (circuit: Circuit): CircuitInfo => ({ name: circuit.name, lengthKm: circuit.length / 1000 });
+const infoOf = (circuit: Circuit): CircuitInfo => ({
+  name: circuit.name,
+  lengthKm: circuit.length / 1000,
+  themeLabel: THEME_PROFILES[circuit.theme].label,
+  climb: Math.max(...circuit.elevation) - Math.min(...circuit.elevation),
+  tunnels: circuit.tunnels.length,
+});
 
 /**
  * Orchestrates a play session: attract mode behind the menu, the start

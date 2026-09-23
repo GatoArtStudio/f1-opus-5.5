@@ -1,5 +1,7 @@
 import type { Circuit } from "@/circuit/domain/circuit";
 
+const GRAVITY = 9.81;
+
 export interface SpeedLimits {
   grip: number;
   brake: number;
@@ -22,14 +24,15 @@ export function computeSpeedProfile(circuit: Circuit, { grip, brake, topSpeed, a
   for (let pass = 0; pass < 2; pass++) {
     for (let i = N - 1; i >= 0; i--) {
       const next = v[circuit.wrap(i + 1)];
-      v[i] = Math.min(v[i], Math.sqrt(next * next + 2 * brake * ds));
+      const slowing = Math.max(brake + GRAVITY * circuit.grade[i], 1); // uphill helps the brakes
+      v[i] = Math.min(v[i], Math.sqrt(next * next + 2 * slowing * ds));
     }
   }
   for (let pass = 0; pass < 2; pass++) {
     for (let i = 0; i < N; i++) {
       const j = circuit.wrap(i + 1);
-      const a = accel * Math.max(0.05, 1 - (v[i] / topSpeed) ** 2);
-      v[j] = Math.min(v[j], Math.sqrt(v[i] * v[i] + 2 * a * ds));
+      const a = accel * Math.max(0.05, 1 - (v[i] / topSpeed) ** 2) - GRAVITY * circuit.grade[i];
+      v[j] = Math.min(v[j], Math.sqrt(Math.max(0, v[i] * v[i] + 2 * a * ds)));
     }
   }
   return v;

@@ -1,6 +1,6 @@
-import { angleDiff } from "@/shared/domain/math";
 import type { CircuitLayout } from "./circuit-layout";
 import { sampleClosedSpline } from "./closed-spline";
+import { loopCurvature } from "./loop-curvature";
 
 export interface LayoutLimits {
   minLength: number;
@@ -27,13 +27,9 @@ export function findLayoutIssue(layout: CircuitLayout, limits: LayoutLimits): La
   const n = loop.xs.length, ds = loop.length / n;
   if (loop.length < limits.minLength || loop.length > limits.maxLength) return "length";
 
-  const heading = (i: number) => Math.atan2(loop.xs[(i + 1) % n] - loop.xs[(i - 1 + n) % n], loop.zs[(i + 1) % n] - loop.zs[(i - 1 + n) % n]);
   const maxCurvature = 1 / limits.minRadius;
-  const K = CURVATURE_HALF_WINDOW;
-  for (let i = 0; i < n; i++) {
-    const curvature = Math.abs(angleDiff(heading((i + K) % n), heading((i - K + n) % n))) / (2 * K * ds);
-    if (curvature > maxCurvature) return "tight-corner";
-  }
+  const curvature = loopCurvature(loop, CURVATURE_HALF_WINDOW);
+  for (let i = 0; i < n; i++) if (curvature[i] > maxCurvature) return "tight-corner";
 
   const neighbours = Math.ceil(NEIGHBOUR_DISTANCE / ds);
   const clearance2 = limits.minClearance ** 2;

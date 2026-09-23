@@ -119,7 +119,9 @@ export function MainMenu({ settings, circuit, outline, onChange, onStart }: Prop
             </div>
           )}
           <p className={`${styles.circuitInfo} ${styles.wide}`}>
-            {circuit.name} · {circuit.lengthKm.toFixed(2)} km
+            {circuit.name} · {circuit.lengthKm.toFixed(2)} km · {circuit.themeLabel}
+            {circuit.climb >= 1 && ` · Desnivel ${Math.round(circuit.climb)} m`}
+            {circuit.tunnels > 0 && ` · ${circuit.tunnels} ${circuit.tunnels === 1 ? "túnel" : "túneles"}`}
           </p>
           <label>
             Vueltas

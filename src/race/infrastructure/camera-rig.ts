@@ -17,16 +17,16 @@ export class CameraRig {
   /** Jump behind a car without easing (e.g. at the start of a race). */
   snapBehind(car: RaceCar): void {
     this.yaw = car.heading;
-    this.position.set(car.x - Math.sin(car.heading) * 9, 3, car.z - Math.cos(car.heading) * 9);
+    this.position.set(car.x - Math.sin(car.heading) * 9, car.y + 3, car.z - Math.cos(car.heading) * 9);
   }
 
   orbitAround(car: RaceCar, dt: number): void {
     const cam = this.camera;
     this.orbit += dt * 0.12;
-    this.target.set(car.x + Math.sin(this.orbit) * 30, 12, car.z + Math.cos(this.orbit) * 30);
+    this.target.set(car.x + Math.sin(this.orbit) * 30, car.y + 12, car.z + Math.cos(this.orbit) * 30);
     this.position.lerp(this.target, 1 - Math.exp(-dt * 2));
     cam.position.copy(this.position);
-    this.target.set(car.x, 1, car.z);
+    this.target.set(car.x, car.y + 1, car.z);
     this.look.lerp(this.target, 1 - Math.exp(-dt * 4));
     cam.lookAt(this.look);
     cam.fov = 55;
@@ -41,16 +41,16 @@ export class CameraRig {
 
     if (mode === "onboard") {
       const hx = Math.sin(car.heading), hz = Math.cos(car.heading);
-      cam.position.set(car.x - hx * 0.4, 1.42, car.z - hz * 0.4);
-      cam.lookAt(car.x + hx * 30, 1.0, car.z + hz * 30);
+      cam.position.set(car.x - hx * 0.4, car.y + 1.42, car.z - hz * 0.4);
+      cam.lookAt(car.x + hx * 30, car.y + 1.0 + Math.tan(car.pitch) * 30, car.z + hz * 30);
       fov += 4;
     } else {
       const dist = mode === "chase" ? 8.5 : 14;
       const height = mode === "chase" ? 2.7 : 4.8;
-      this.target.set(car.x - fx * dist, height, car.z - fz * dist);
+      this.target.set(car.x - fx * dist, car.y + height, car.z - fz * dist);
       this.position.lerp(this.target, 1 - Math.exp(-dt * 12));
       cam.position.copy(this.position);
-      this.look.set(car.x + fx * 5, 1.1, car.z + fz * 5);
+      this.look.set(car.x + fx * 5, car.y + 1.1 + Math.tan(car.pitch) * 5, car.z + fz * 5);
       cam.lookAt(this.look);
     }
     if (shake > 0) {

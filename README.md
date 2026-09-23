@@ -52,8 +52,9 @@ Las carpetas de primer nivel de `src/` llevan el nombre de los conceptos del jue
 src/
 ├── app/                     Solo rutas de Next.js (layout, page, globals.css)
 ├── circuit/                 El circuito
-│   ├── domain/              Spline, muestreo, proyección, muros, trazada ideal
-│   └── infrastructure/      Escenario 3D: asfalto, pianos, muros, gradas, pórtico
+│   ├── domain/              Spline, muestreo, proyección, muros, trazada ideal, generador por seed, temas, desniveles, túneles, terreno
+│   ├── infrastructure/      Escenario 3D: terreno, asfalto, pianos, muros, gradas, túneles, edificios, props y horizonte por tema
+│   └── presentation/        Dibujo del trazado (minimapa y vista previa del menú)
 ├── race-car/                El coche
 │   ├── domain/              Física arcade, especificaciones, controles
 │   └── infrastructure/      Modelo 3D procedural
@@ -73,4 +74,15 @@ src/
 
 Las dependencias apuntan hacia dentro: `presentation → application → domain`, e `infrastructure` implementa los puertos que define `application`. La raíz de composición, que conecta todas las piezas, es `race/infrastructure/create-race-game.ts`.
 
-Para cambiar el circuito, edita `WEB_GP_CIRCUIT.controlPoints` en `src/circuit/domain/circuit-layout.ts`. Son puntos (x, z) en metros de un circuito cerrado, y el punto 0 es la línea de meta.
+Para cambiar el circuito fijo, edita `WEB_GP_CIRCUIT.controlPoints` en `src/circuit/domain/circuit-layout.ts`. Son puntos (x, z) en metros de un circuito cerrado, y el punto 0 es la línea de meta.
+
+### Circuitos generados por seed
+
+En el menú, "Circuito generado (seed)" crea un circuito a partir de un texto: la misma seed da siempre el mismo circuito, para compartirla o guardarla. `generateCircuitLayout(seed)` (`src/circuit/domain/circuit-generator.ts`) decide con esa seed:
+
+- **El trazado**, validado (radio mínimo de curva, separación entre tramos, longitud) para que siempre sea jugable.
+- **El tema** (`circuit-theme.ts`): bosque, hielo, desierto, volcán o ciudad. Cambia cielo, luz, niebla, terreno, colores, props y horizonte (`infrastructure/circuit-palette.ts`).
+- **Los desniveles** (`elevation-profile.ts`): pendientes de hasta el 9 %, con la recta de salida siempre plana. Afectan a la física y a la IA.
+- **Los túneles** (`circuit-features.ts`), solo en tramos rectos y lejos de la salida.
+
+Un circuito fijo puede usar todo esto rellenando los campos opcionales `theme`, `seed`, `elevation` y `tunnels` de su `CircuitLayout`.

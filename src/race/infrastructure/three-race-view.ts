@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type { Circuit } from "@/circuit/domain/circuit";
 import { buildCircuitScenery, type CircuitScenery } from "@/circuit/infrastructure/circuit-scenery";
+import type { CircuitPalette } from "@/circuit/infrastructure/circuit-palette";
 import type { RaceCar } from "@/race-car/domain/race-car";
 import { CarModel } from "@/race-car/infrastructure/car-model";
 import type { RaceView, RenderFrame } from "../application/ports";
@@ -13,6 +14,7 @@ const MAX_GRID = 14;
 function disposeTree(root: THREE.Object3D): void {
   root.traverse((obj) => {
     const mesh = obj as THREE.Mesh;
+    (obj as THREE.InstancedMesh).dispose?.(); // per-instance buffers
     mesh.geometry?.dispose();
     const materials = Array.isArray(mesh.material) ? mesh.material : mesh.material ? [mesh.material] : [];
     for (const m of materials) {
@@ -28,6 +30,8 @@ export class ThreeRaceView implements RaceView {
   private readonly scene = new THREE.Scene();
   private readonly camera: THREE.PerspectiveCamera;
   private readonly sun: THREE.DirectionalLight;
+  private readonly hemisphere: THREE.HemisphereLight;
+  private readonly fog = new THREE.Fog(0xcfe3f2, 350, 2200);
   private scenery: CircuitScenery | null = null;
   private sceneryRoot: THREE.Group | null = null;
   private readonly rig: CameraRig;
@@ -45,11 +49,12 @@ export class ThreeRaceView implements RaceView {
     renderer.toneMappingExposure = 1.05;
     container.appendChild(renderer.domElement);
 
-    this.scene.fog = new THREE.Fog(0xcfe3f2, 350, 2200);
+    this.scene.fog = this.fog;
     this.camera = new THREE.PerspectiveCamera(68, 1, 0.3, 6000);
     this.rig = new CameraRig(this.camera);
 
-    this.scene.add(new THREE.HemisphereLight(0xdcecff, 0x3d5a2a, 1.1));
+    this.hemisphere = new THREE.HemisphereLight(0xdcecff, 0x3d5a2a, 1.1);
+    this.scene.add(this.hemisphere);
     const sun = (this.sun = new THREE.DirectionalLight(0xfff4e0, 2.4));
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
@@ -70,6 +75,19 @@ export class ThreeRaceView implements RaceView {
     const root = (this.sceneryRoot = new THREE.Group());
     this.scene.add(root);
     this.scenery = buildCircuitScenery(root, circuit, this.renderer, Race.gridSlots(circuit, MAX_GRID));
+    this.applyAtmosphere(this.scenery.palette);
+  }
+
+  private applyAtmosphere({ fog, light }: CircuitPalette): void {
+    this.fog.color.setHex(fog.color);
+    this.fog.near = fog.near;
+    this.fog.far = fog.far;
+    this.hemisphere.color.setHex(light.hemiSky);
+    this.hemisphere.groundColor.setHex(light.hemiGround);
+    this.hemisphere.intensity = light.hemiIntensity;
+    this.sun.color.setHex(light.sun);
+    this.sun.intensity = light.sunIntensity;
+    this.renderer.toneMappingExposure = light.exposure;
   }
 
   showRace(race: Race): void {
@@ -108,8 +126,8 @@ export class ThreeRaceView implements RaceView {
     this.models.get(player)?.setOnboardView(camera === "onboard");
 
     const cp = this.camera.position;
-    this.sun.position.set(cp.x + 80, 140, cp.z + 50);
-    this.sun.target.position.set(cp.x, 0, cp.z);
+    this.sun.position.set(cp.x + 80, cp.y + 140, cp.z + 50);
+    this.sun.target.position.set(cp.x, cp.y - 3, cp.z);
     this.renderer.render(this.scene, this.camera);
   }
 

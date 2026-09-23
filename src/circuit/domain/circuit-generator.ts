@@ -1,6 +1,7 @@
 import { randomBetween, type RandomSource } from "@/shared/domain/math";
 import { createSeededRandom } from "@/shared/domain/seeded-random";
 import { WEB_GP_CIRCUIT, type CircuitLayout } from "./circuit-layout";
+import { addCircuitFeatures } from "./circuit-features";
 import { findLayoutIssue, type LayoutLimits } from "./layout-validation";
 
 type Point = readonly [number, number];
@@ -57,7 +58,7 @@ function buildCandidate(name: string, random: RandomSource): CircuitLayout {
 }
 
 /**
- * Deterministic: the same seed always yields the same circuit. Candidates are
+ * Deterministic: the same seed always yields the same circuit, theme included. Candidates are
  * drawn until one passes validation; if none does, the hand-made circuit is
  * returned so a race can always start.
  */
@@ -65,7 +66,7 @@ export function generateCircuitLayout(seed: string): CircuitLayout {
   const name = `Circuito ${seed}`;
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const layout = buildCandidate(name, createSeededRandom(`${seed}#${attempt}`));
-    if (findLayoutIssue(layout, LIMITS) === null) return layout;
+    if (findLayoutIssue(layout, LIMITS) === null) return addCircuitFeatures(layout, seed);
   }
-  return { ...WEB_GP_CIRCUIT, name };
+  return addCircuitFeatures({ ...WEB_GP_CIRCUIT, name }, seed);
 }

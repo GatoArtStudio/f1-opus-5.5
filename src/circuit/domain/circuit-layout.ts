@@ -1,3 +1,7 @@
+import type { CircuitThemeId } from "./circuit-theme";
+import type { ElevationSpec } from "./elevation-profile";
+import type { TunnelSpan } from "./tunnel";
+
 /** Static description of a circuit. Units: metres. */
 export interface CircuitLayout {
   readonly name: string;
@@ -9,6 +13,13 @@ export interface CircuitLayout {
   readonly sampleSpacing: number;
   /** Closed loop of (x, z) points; index 0 is the start/finish line. */
   readonly controlPoints: readonly (readonly [number, number])[];
+  /** Look of the surroundings; flat forest when omitted. */
+  readonly theme?: CircuitThemeId;
+  /** Seeds the scenery (hills, props) so the same layout always looks the same. */
+  readonly seed?: string;
+  /** Hills along the lap; the track is flat when omitted. */
+  readonly elevation?: ElevationSpec;
+  readonly tunnels?: readonly TunnelSpan[];
 }
 
 export const WEB_GP_CIRCUIT: CircuitLayout = {

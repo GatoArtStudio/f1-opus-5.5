@@ -1,13 +1,17 @@
 import * as THREE from "three";
 import type { Circuit } from "@/circuit/domain/circuit";
 import { canvasTexture, FLAT_RENDER_ORDER, paintNoise } from "./canvas-texture";
+import type { CircuitPalette } from "./circuit-palette";
+
+/** Pulls a flat layer toward the camera so it always wins against the ground under it. */
+const ON_GROUND = { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 } as const;
 
 export interface GridSlotMark {
   dist: number;
   lateral: number;
 }
 
-/** Ribbon along the circuit between two lateral offsets (functions of index). */
+/** Ribbon along the circuit between two lateral offsets (functions of index), following the road's height. */
 function ribbon(
   circuit: Circuit,
   inner: (i: number) => number,
@@ -22,10 +26,11 @@ function ribbon(
   for (let k = 0; k <= N; k++) {
     const i = k % N;
     const a = inner(i), b = outer(i);
+    const h = circuit.elevation[i] + y;
     pos.set(
       [
-        circuit.px[i] + circuit.rx[i] * a, y, circuit.pz[i] + circuit.rz[i] * a,
-        circuit.px[i] + circuit.rx[i] * b, y, circuit.pz[i] + circuit.rz[i] * b,
+        circuit.px[i] + circuit.rx[i] * a, h, circuit.pz[i] + circuit.rz[i] * a,
+        circuit.px[i] + circuit.rx[i] * b, h, circuit.pz[i] + circuit.rz[i] * b,
       ],
       k * 6,
     );
@@ -44,17 +49,17 @@ function ribbon(
   return g;
 }
 
-export function buildRoad(scene: THREE.Object3D, circuit: Circuit, anisotropy: number): void {
+export function buildRoad(scene: THREE.Object3D, circuit: Circuit, palette: CircuitPalette, anisotropy: number): void {
   const hw = circuit.halfWidth;
   const tex = canvasTexture(256, (g, s) => {
-    paintNoise(g, s, "#3a3b3e", 0.22, 14000);
+    paintNoise(g, s, palette.asphalt, 0.22, 14000);
     g.fillStyle = "#e8e8e8";
     g.fillRect(0, 0, 6, s);
     g.fillRect(s - 6, 0, 6, s);
   }, anisotropy);
   const road = new THREE.Mesh(
     ribbon(circuit, () => -hw, () => hw, 0.02, 10),
-    new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85, metalness: 0.05, depthWrite: false }),
+    new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85, metalness: 0.05, depthWrite: false, ...ON_GROUND }),
   );
   road.receiveShadow = true;
   road.renderOrder = FLAT_RENDER_ORDER.road;
@@ -63,13 +68,13 @@ export function buildRoad(scene: THREE.Object3D, circuit: Circuit, anisotropy: n
   // Darker rubbered-in racing line.
   const line = new THREE.Mesh(
     ribbon(circuit, (i) => circuit.lineOffset[i] - 1.2, (i) => circuit.lineOffset[i] + 1.2, 0.025, 10),
-    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.18, depthWrite: false }),
+    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.18, depthWrite: false, ...ON_GROUND }),
   );
   line.renderOrder = FLAT_RENDER_ORDER.marks;
   scene.add(line);
 }
 
-export function buildKerbs(scene: THREE.Object3D, circuit: Circuit): void {
+export function buildKerbs(scene: THREE.Object3D, circuit: Circuit, palette: CircuitPalette): void {
   const N = circuit.n, hw = circuit.halfWidth, kw = circuit.kerbWidth;
   // Kerbs only where the track bends, dilated to cover entry and exit.
   const on = new Uint8Array(N);
@@ -77,7 +82,7 @@ export function buildKerbs(scene: THREE.Object3D, circuit: Circuit): void {
     if (Math.abs(circuit.curv[i]) > 1 / 320) for (let k = -8; k <= 8; k++) on[circuit.wrap(i + k)] = 1;
   }
   const pos: number[] = [], col: number[] = [];
-  const red = new THREE.Color(0xd4161c), white = new THREE.Color(0xf2f2f2);
+  const red = new THREE.Color(palette.kerb[0]), white = new THREE.Color(palette.kerb[1]);
   for (let i = 0; i < N; i++) {
     if (!on[i]) continue;
     const j = circuit.wrap(i + 1);
@@ -87,7 +92,7 @@ export function buildKerbs(scene: THREE.Object3D, circuit: Circuit): void {
         [i, hw, 0.03], [i, hw + kw, 0.09], [j, hw, 0.03], [j, hw + kw, 0.09],
       ];
       const pts = corners.map(([k, off, y]) => [
-        circuit.px[k] + circuit.rx[k] * off * side, y, circuit.pz[k] + circuit.rz[k] * off * side,
+        circuit.px[k] + circuit.rx[k] * off * side, circuit.elevation[k] + y, circuit.pz[k] + circuit.rz[k] * off * side,
       ]);
       const tri = side > 0 ? [0, 1, 2, 1, 3, 2] : [0, 2, 1, 1, 2, 3];
       for (const t of tri) {
@@ -100,18 +105,18 @@ export function buildKerbs(scene: THREE.Object3D, circuit: Circuit): void {
   g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
   g.computeVertexNormals();
-  const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, depthWrite: false }));
+  const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, depthWrite: false, ...ON_GROUND }));
   m.receiveShadow = true;
   m.renderOrder = FLAT_RENDER_ORDER.marks;
   scene.add(m);
 }
 
 /** Flat plane lying on the ground, rotated to face across the track. */
-function groundPlate(geometry: THREE.PlaneGeometry, material: THREE.Material, x: number, z: number, heading: number) {
+function groundPlate(geometry: THREE.PlaneGeometry, material: THREE.Material, x: number, y: number, z: number, heading: number) {
   const m = new THREE.Mesh(geometry, material);
   m.rotation.order = "YXZ";
   m.rotation.set(-Math.PI / 2, heading, 0);
-  m.position.set(x, 0.03, z);
+  m.position.set(x, y + 0.03, z);
   m.renderOrder = FLAT_RENDER_ORDER.marks;
   return m;
 }
@@ -130,15 +135,15 @@ export function buildStartLine(scene: THREE.Object3D, circuit: Circuit, gridSlot
   scene.add(
     groundPlate(
       new THREE.PlaneGeometry(circuit.halfWidth * 2, 2),
-      new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8, depthWrite: false }),
-      circuit.px[0], circuit.pz[0], circuit.headingAt(0),
+      new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8, depthWrite: false, ...ON_GROUND }),
+      circuit.px[0], circuit.elevation[0], circuit.pz[0], circuit.headingAt(0),
     ),
   );
 
   const slotGeo = new THREE.PlaneGeometry(2.6, 0.25);
-  const slotMat = new THREE.MeshBasicMaterial({ color: 0xf0f0f0, depthWrite: false });
+  const slotMat = new THREE.MeshBasicMaterial({ color: 0xf0f0f0, depthWrite: false, ...ON_GROUND });
   for (const { dist, lateral } of gridSlots) {
     const p = circuit.pointAt(dist + 3.2, lateral);
-    scene.add(groundPlate(slotGeo, slotMat, p.x, p.z, circuit.headingAt(circuit.indexAt(dist))));
+    scene.add(groundPlate(slotGeo, slotMat, p.x, circuit.elevationAt(dist + 3.2), p.z, circuit.headingAt(circuit.indexAt(dist))));
   }
 }
