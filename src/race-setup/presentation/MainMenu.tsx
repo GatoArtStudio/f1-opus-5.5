@@ -3,7 +3,7 @@
 import { useState, type FormEvent, type KeyboardEvent } from "react";
 import { normalizeSeed, randomSeed } from "@/circuit/domain/circuit-seed";
 import { PRESET_CIRCUITS, type PresetCircuitId } from "@/circuit/domain/circuit-selection";
-import type { CircuitInfo } from "@/race/application/race-ui-state";
+import type { CircuitInfo, CircuitOutline } from "@/race/application/race-ui-state";
 import overlay from "@/shared/presentation/overlay.module.css";
 import {
   LAP_CHOICES,
@@ -12,6 +12,7 @@ import {
   type GridSlot,
   type RaceSettings,
 } from "../domain/race-settings";
+import { CircuitPreview } from "./CircuitPreview";
 import styles from "./main-menu.module.css";
 
 const DIFFICULTY_LABELS: Record<Difficulty, string> = { easy: "Fácil", medium: "Media", hard: "Difícil" };
@@ -27,11 +28,12 @@ const GENERATED = "generated";
 interface Props {
   settings: RaceSettings;
   circuit: CircuitInfo;
+  outline: CircuitOutline;
   onChange(patch: Partial<RaceSettings>): void;
   onStart(): void;
 }
 
-export function MainMenu({ settings, circuit, onChange, onStart }: Props) {
+export function MainMenu({ settings, circuit, outline, onChange, onStart }: Props) {
   const selection = settings.circuit;
   const activeSeed = selection.kind === "generated" ? selection.seed : "";
   // What the seed field shows while typing; only applied on Enter / blur.
@@ -42,15 +44,15 @@ export function MainMenu({ settings, circuit, onChange, onStart }: Props) {
     setSeedDraft(seed);
     if (seed !== activeSeed) onChange({ circuit: { kind: "generated", seed } });
   };
-  const commitSeed = () => {
-    const seed = normalizeSeed(seedDraft);
+  const commitSeed = (typed: string) => {
+    const seed = normalizeSeed(typed);
     if (seed) applySeed(seed);
     else setSeedDraft(activeSeed);
   };
   const onSeedKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== "Enter") return;
     e.preventDefault(); // Enter applies the seed instead of starting the race
-    commitSeed();
+    commitSeed(e.currentTarget.value);
   };
   const chooseCircuit = (value: string) => {
     if (value === GENERATED) applySeed(normalizeSeed(seedDraft) || randomSeed());
@@ -101,7 +103,7 @@ export function MainMenu({ settings, circuit, onChange, onStart }: Props) {
                   id="circuit-seed"
                   value={seedDraft}
                   onChange={(e) => setSeedDraft(e.target.value)}
-                  onBlur={commitSeed}
+                  onBlur={(e) => commitSeed(e.currentTarget.value)}
                   onKeyDown={onSeedKeyDown}
                   maxLength={24}
                   spellCheck={false}
@@ -168,6 +170,7 @@ export function MainMenu({ settings, circuit, onChange, onStart }: Props) {
           <div className={overlay.dim}>Mando compatible: RT acelera, LT frena, stick izquierdo gira.</div>
         </div>
       </form>
+      <CircuitPreview outline={outline} />
     </div>
   );
 }

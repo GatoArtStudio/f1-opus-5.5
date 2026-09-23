@@ -47,7 +47,7 @@ export default function RaceGame() {
             />
           )}
           {state.phase === "menu" && (
-            <MainMenu settings={state.settings} circuit={state.circuit} onChange={session.updateSettings} onStart={session.startRace} />
+            <MainMenu settings={state.settings} circuit={state.circuit} outline={session.outline} onChange={session.updateSettings} onStart={session.startRace} />
           )}
           {state.phase === "paused" && (
             <PauseMenu onResume={session.togglePause} onRestart={session.startRace} onQuit={session.quitToMenu} />
