@@ -2,6 +2,7 @@ import { BotDriver } from "@/ai-driver/domain/bot-driver";
 import type { Circuit } from "@/circuit/domain/circuit";
 import type { CarControls } from "@/race-car/domain/car-controls";
 import { RaceCar } from "@/race-car/domain/race-car";
+import { updateWakes } from "@/race-car/domain/slipstream";
 import { DIFFICULTY_LEVELS, type RaceSettings } from "@/race-setup/domain/race-settings";
 import { randomBetween, shuffle, type RandomSource } from "@/shared/domain/math";
 import { resolveCarCollisions } from "./car-collisions";
@@ -105,6 +106,7 @@ export class Race {
   step(dt: number, green: boolean, playerControls: CarControls): void {
     const { cars, player } = this;
     if (green) {
+      updateWakes(cars);
       for (const bot of this.bots) bot.update(dt, cars, this.time);
       if (this.attractMode || player.finished) this.playerBot.update(dt, cars, this.time);
       else Object.assign(player.car.controls, playerControls);

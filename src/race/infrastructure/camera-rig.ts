@@ -37,7 +37,7 @@ export class CameraRig {
     const cam = this.camera;
     this.yaw += angleDiff(car.heading, this.yaw) * (1 - Math.exp(-dt * (mode === "onboard" ? 30 : 5)));
     const fx = Math.sin(this.yaw), fz = Math.cos(this.yaw);
-    let fov = 66 + (Math.abs(car.speed) / CAR_SPECS.maxSpeed) * 14;
+    let fov = 66 + (Math.abs(car.speed) / CAR_SPECS.maxSpeed) * 14 + car.tow * 4; // the tow widens the view
 
     if (mode === "onboard") {
       const hx = Math.sin(car.heading), hz = Math.cos(car.heading);

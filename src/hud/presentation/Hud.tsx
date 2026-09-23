@@ -5,6 +5,7 @@ import styles from "./hud.module.css";
 import { Minimap } from "./Minimap";
 import { PositionPanel } from "./PositionPanel";
 import { RaceMessageBanner } from "./RaceMessageBanner";
+import { SlipstreamBadge } from "./SlipstreamBadge";
 import { Speedometer } from "./Speedometer";
 import { StartLights } from "./StartLights";
 import { TimingTower } from "./TimingTower";
@@ -33,6 +34,7 @@ export function Hud({ hud, startLights, message, outline, subscribeTelemetry }: 
         lastLap={hud.lastLap}
         bestLap={hud.bestLap}
       />
+      <SlipstreamBadge tow={hud.slipstream} dirtyAir={hud.dirtyAir} />
       <Speedometer speedKmh={hud.speedKmh} gear={hud.gear} subscribe={subscribeTelemetry} />
       <div className={styles.hint}>C cámara · R recolocar · M sonido · Esc pausa</div>
     </div>

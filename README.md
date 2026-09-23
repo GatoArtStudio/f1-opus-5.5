@@ -39,6 +39,12 @@ La versión de Node está fijada en `.nvmrc`.
 | Pausa | `Esc` / `P` | |
 | Empezar (desde el menú) | `Enter` | |
 
+## Rebufo (slipstream)
+
+Un coche que va justo detrás de otro sufre menos resistencia aerodinámica (`race-car/domain/slipstream.ts`): hasta un 35 % menos a corta distancia, que se desvanece con la distancia y solo funciona si va alineado con la estela. A 300 km/h eso son 10-15 km/h de punta. El precio es el aire sucio, que le quita hasta un 10 % de agarre en curva. El HUD muestra una barra "REBUFO" mientras el jugador lo aprovecha.
+
+Los bots también lo usan: se meten en la estela del coche de delante y salen a adelantar cuando están cerca. Y si notan a alguien pegado a su cola, tienen un 85 % de probabilidad de apartarse de su línea para romper el rebufo, con las reglas de F1: un solo movimiento por recta, nunca al frenar ni en una curva (`ai-driver/domain/bot-driver.ts`).
+
 ## Arquitectura: Screaming Architecture
 
 Las carpetas de primer nivel de `src/` llevan el nombre de los conceptos del juego, no de roles técnicos. Cada una se divide en capas:
@@ -58,7 +64,7 @@ src/
 ├── race-car/                El coche
 │   ├── domain/              Física arcade, especificaciones, controles
 │   └── infrastructure/      Modelo 3D procedural
-├── ai-driver/domain/        Pilotos IA: persecución pura, perfil de velocidad, adelantamientos
+├── ai-driver/domain/        Pilotos IA: persecución pura, perfil de velocidad, adelantamientos, rebufo y defensa
 ├── race/                    La carrera
 │   ├── domain/              Parrilla, vueltas, clasificación, diferencias, colisiones, semáforo
 │   ├── application/         RaceSession (máquina de estados y bucle), puertos, DTO de UI

@@ -25,6 +25,9 @@ export interface HudSnapshot {
   lastLap: number;
   bestLap: number;
   wrongWay: boolean;
+  /** Slipstream the player is in and the dirty air that goes with it, 0-1. */
+  slipstream: number;
+  dirtyAir: number;
   tower: TowerRow[];
 }
 

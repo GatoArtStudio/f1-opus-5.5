@@ -236,6 +236,42 @@
   font-size: 26px;
 }
 
+/* ---------- Slipstream ---------- */
+.slipstream {
+  right: 16px;
+  bottom: 226px;
+  width: 230px;
+  padding: 8px 12px 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.slipstreamTitle {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: #6fd8ff;
+}
+
+.dirtyAir {
+  color: #ffb020;
+}
+
+.slipstreamTrack {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.slipstreamFill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #2aa8ff, #9fefff);
+}
+
 /* ---------- Start lights ---------- */
 .lights {
   position: absolute;
@@ -395,6 +431,12 @@
     height: 130px;
     right: 8px;
     bottom: 8px;
+  }
+
+  .slipstream {
+    width: 150px;
+    right: 8px;
+    bottom: 146px;
   }
 
   .speedRead {

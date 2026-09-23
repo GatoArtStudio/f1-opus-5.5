@@ -2,6 +2,7 @@ import type { Circuit, Surface, TrackPosition } from "@/circuit/domain/circuit";
 import { clamp } from "@/shared/domain/math";
 import type { CarControls } from "./car-controls";
 import { CAR_SPECS, GEAR_TOP_SPEEDS, type Gear } from "./car-specs";
+import { SLIPSTREAM } from "./slipstream";
 
 const GRAVITY = 9.81;
 
@@ -34,6 +35,10 @@ export class RaceCar {
   /** Road height under the car and the slope of the road along its heading (rad, > 0 nose up). */
   y = 0;
   pitch = 0;
+  /** Slipstream this car is running in (0-1), the car providing it, and the turbulence costing grip (0-1). */
+  tow = 0;
+  towSource: RaceCar | null = null;
+  dirtyAir = 0;
 
   readonly controls: CarControls = { throttle: 0, brake: 0, steer: 0 };
 
@@ -82,8 +87,9 @@ export class RaceCar {
   update(dt: number): void {
     const { throttle, brake, steer } = this.controls;
     this.surface = this.circuit.surfaceAt(this.lateral);
-    const grip =
+    const surfaceGrip =
       this.surface === "track" ? CAR_SPECS.grip : this.surface === "kerb" ? CAR_SPECS.kerbGrip : CAR_SPECS.grassGrip;
+    const grip = surfaceGrip * (1 - SLIPSTREAM.maxGripLoss * this.dirtyAir);
 
     let sh = Math.sin(this.heading), ch = Math.cos(this.heading);
     let vf = this.vx * sh + this.vz * ch;
@@ -99,7 +105,7 @@ export class RaceCar {
       if (vf > 0.5) a -= brake * CAR_SPECS.brakeDecel;
       else if (vf > -CAR_SPECS.reverseSpeed) a -= brake * 7;
     }
-    a -= Math.sign(vf) * (0.4 + 0.0009 * vf * vf);
+    a -= Math.sign(vf) * (0.4 + 0.0009 * vf * vf * (1 - SLIPSTREAM.maxDragReduction * this.tow));
     a -= GRAVITY * this.slopeAlongHeading(sh, ch);
     if (this.surface === "grass") {
       a -= Math.sign(vf) * CAR_SPECS.grassDrag * (Math.abs(vf) > CAR_SPECS.grassMaxSpeed ? 2.2 : 1);

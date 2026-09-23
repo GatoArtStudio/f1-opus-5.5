@@ -330,6 +330,8 @@ export class RaceSession {
       lastLap: player.lastLap,
       bestLap: player.bestLap,
       wrongWay: phase === "racing" && race.isPlayerWrongWay(),
+      slipstream: player.car.tow,
+      dirtyAir: player.car.dirtyAir,
       tower: standings.map(({ entry, gap }) => ({
         position: entry.position,
         code: entry.driver.code,
