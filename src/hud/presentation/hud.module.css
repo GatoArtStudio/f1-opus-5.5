@@ -68,7 +68,7 @@
 
 .towerList li {
   display: grid;
-  grid-template-columns: 24px 4px 1fr auto;
+  grid-template-columns: 24px 4px 1fr 16px auto;
   align-items: center;
   gap: 8px;
   padding: 3px 10px;
@@ -236,10 +236,96 @@
   font-size: 26px;
 }
 
+/* ---------- Weather ---------- */
+.weather {
+  top: 224px;
+  right: 16px;
+  width: 260px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.weatherIcon {
+  font-size: 30px;
+  line-height: 1;
+}
+
+.weatherLabel {
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.weatherSurface {
+  font-size: 12px;
+  color: var(--dim);
+}
+
+/* ---------- Tyres ---------- */
+.tyres {
+  right: 16px;
+  bottom: 226px;
+  width: 230px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tyreInfo {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.tyreName {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-weight: 800;
+  letter-spacing: 1px;
+  font-size: 14px;
+}
+
+.tyreName small {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--dim);
+}
+
+.wearTrack {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.wearFill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+.pitHint {
+  font-size: 11px;
+  color: var(--dim);
+  letter-spacing: 1px;
+}
+
+.pitStatus {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #ffd200;
+}
+
 /* ---------- Slipstream ---------- */
 .slipstream {
   right: 16px;
-  bottom: 226px;
+  bottom: 298px;
   width: 230px;
   padding: 8px 12px 10px;
   display: grid;
@@ -433,10 +519,25 @@
     bottom: 8px;
   }
 
-  .slipstream {
+  .tyres {
     width: 150px;
     right: 8px;
     bottom: 146px;
+    padding: 6px 8px;
+    gap: 8px;
+  }
+
+  .weather {
+    top: 214px;
+    width: 150px;
+    right: 8px;
+    padding: 6px 8px;
+  }
+
+  .slipstream {
+    width: 150px;
+    right: 8px;
+    bottom: 212px;
   }
 
   .speedRead {
@@ -470,5 +571,75 @@
 
   .hint {
     display: none;
+  }
+}
+
+.towerList em.pitTag {
+  color: #111;
+  background: #ffd200;
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: 1px;
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+/* ---------- Pit board ---------- */
+.pitBoard {
+  left: 50%;
+  bottom: 96px;
+  transform: translateX(-50%);
+  width: min(340px, calc(100vw - 32px));
+  padding: 10px 14px 12px;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  background: #0b0b0e;
+  border: 3px solid #ffd200;
+  text-align: center;
+}
+
+.pitBoardTitle {
+  font-size: 34px;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: 3px;
+  color: #ffd200;
+  animation: pitBlink 0.9s steps(2, jump-none) infinite;
+}
+
+.pitBoardTyre {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.pitBoardReason {
+  font-size: 13px;
+  color: var(--dim);
+}
+
+.pitBoardKey {
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: #ffd200;
+}
+
+.pitBoardSmall {
+  bottom: 96px;
+  padding: 6px 12px;
+  border-width: 2px;
+}
+
+.pitBoardSmall .pitBoardTitle {
+  font-size: 16px;
+  animation: none;
+}
+
+@keyframes pitBlink {
+  50% {
+    opacity: 0.35;
   }
 }

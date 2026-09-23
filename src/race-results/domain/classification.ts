@@ -15,6 +15,8 @@ export interface ClassificationRow {
   bestLap: number;
   fastestLap: boolean;
   result: ClassifiedResult;
+  /** Seconds added for breaking a rule, already included in `result`. */
+  penalty: number;
 }
 
 export interface Classification {
@@ -38,8 +40,9 @@ export function classifyRace(race: Race): Classification {
     result: !entry.finished
       ? { kind: "running", lap: Math.max(1, entry.lap) }
       : i === 0
-        ? { kind: "winner", raceTime: entry.finishTime }
-        : { kind: "gap", seconds: entry.finishTime - leader.finishTime },
+        ? { kind: "winner", raceTime: entry.classifiedTime }
+        : { kind: "gap", seconds: entry.classifiedTime - leader.classifiedTime },
+    penalty: entry.penalty,
   }));
   return { playerPosition: race.player.position, rows };
 }

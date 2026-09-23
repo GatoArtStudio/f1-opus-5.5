@@ -39,6 +39,19 @@ La versión de Node está fijada en `.nvmrc`.
 | Pausa | `Esc` / `P` | |
 | Empezar (desde el menú) | `Enter` | |
 
+## Clima, neumáticos y boxes
+
+**Clima.** Cada carrera tiene un clima aleatorio (no depende de la seed) que lo decide el tipo de circuito (`weather/domain/weather.ts`). Casi siempre hace buen tiempo, y lo malo cambia según el tema: lluvia y tormenta en bosque, ciudad y volcán; nieve y ventisca en hielo; tormenta de arena en el desierto; lluvia de ceniza en el volcán. El clima evoluciona durante la carrera con una cadena de transiciones, y el menú muestra la tendencia con sus probabilidades. La pista acumula agua o una capa de nieve, arena o ceniza mientras dura, y se seca después.
+
+**Neumáticos.** Seis compuestos: blanda, media, dura, intermedia, lluvia y nieve (`tyres/domain/tyre.ts`). Su agarre depende del agua y la cobertura de la pista, de la temperatura (el tema la cambia: el volcán quema las blandas, el hielo castiga a las duras) y del desgaste, que además tiene un "precipicio" cerca del final. Los pintan en las ruedas y en la torre de tiempos. En el menú puedes elegir con qué salir, o "Auto" para el recomendado.
+
+**Boxes.** Hay una calle de boxes junto a la recta de salida, con carril rápido a 80 km/h, un cajón por coche, garajes y un semáforo de salida (`pit-stop/`). Pulsa `B` para pedir parada: al final de la vuelta el coche pasa a piloto automático, entra, se detiene en su box y allí eliges el neumático (teclas `1`-`6` o clic; si no eliges en 8 s, monta el recomendado). Mientras tanto ves a los mecánicos de tu equipo cambiar las ruedas con el coche elevado, y al terminar el hombre de la piruleta pasa de rojo a verde.
+
+- **Señal de boxes:** cuando compensa parar (cambia el clima, neumáticos gastados o falta la parada obligatoria), el muro de boxes te saca el panel "BOX · BOX" con el neumático que recomienda y el motivo, y un aviso de radio. Pulsa `B` para aceptar.
+- **Regla de dos compuestos:** como en F1, en una carrera seca de 3 o más vueltas hay que usar dos compuestos distintos (opcional en el menú); si no, +20 s de penalización. La regla se anula si la pista se moja o se cubre. Por eso todos los bots paran, cada uno en la vuelta que elige.
+- **Bots:** deciden solos cuándo parar y qué montar (`ai-driver/domain/tyre-strategy.ts`), comparando el agarre que ganarían con el tiempo que pierden, y reaccionan al clima con un pequeño retraso. En la torre de tiempos se ve quién está en boxes ("PIT").
+- **Tráfico en boxes:** los coches guardan distancia entre sí, no salen del box si el carril está ocupado, y el semáforo de salida se pone en rojo cuando un coche de pista está a punto de pasar por la incorporación.
+
 ## Rebufo (slipstream)
 
 Un coche que va justo detrás de otro sufre menos resistencia aerodinámica (`race-car/domain/slipstream.ts`): hasta un 35 % menos a corta distancia, que se desvanece con la distancia y solo funciona si va alineado con la estela. A 300 km/h eso son 10-15 km/h de punta. El precio es el aire sucio, que le quita hasta un 10 % de agarre en curva. El HUD muestra una barra "REBUFO" mientras el jugador lo aprovecha.
@@ -70,7 +83,10 @@ src/
 │   ├── application/         RaceSession (máquina de estados y bucle), puertos, DTO de UI
 │   ├── infrastructure/      Vista three.js, cámaras, bucle de animación, raíz de composición
 │   └── presentation/        <RaceGame/>, menú de pausa, hook de estado
-├── race-setup/              Ajustes de carrera (vueltas, rivales, dificultad, salida) + menú principal
+├── weather/                 Clima aleatorio por tema, estado de la pista, lluvia/nieve/arena/ceniza en 3D
+├── tyres/                   Compuestos, agarre según pista y clima, desgaste, recomendación
+├── pit-stop/                Calle de boxes, piloto automático de entrada/salida, mecánicos, menú de neumáticos
+├── race-setup/              Ajustes de carrera (vueltas, rivales, dificultad, salida, neumáticos) + menú principal
 ├── race-results/            Clasificación final + pantalla de resultados
 ├── hud/presentation/        Velocidad, posición, tiempos, torre de tiempos, minimapa, semáforo
 ├── player-controls/         Adaptador de teclado + mando (puerto PlayerControls)

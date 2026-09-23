@@ -1,6 +1,10 @@
 import { Circuit } from "@/circuit/domain/circuit";
 import { THEME_PROFILES } from "@/circuit/domain/circuit-theme";
 import { isSameCircuitSelection, resolveCircuitLayout, type CircuitSelection } from "@/circuit/domain/circuit-selection";
+import { CHOICE_TIMEOUT } from "@/pit-stop/domain/pit-stop";
+import { bestCompound, type Compound } from "@/tyres/domain/tyre";
+import { describeSurface } from "@/weather/domain/track-description";
+import { pickStartWeather, WEATHER } from "@/weather/domain/weather";
 import { classifyRace } from "@/race-results/domain/classification";
 import { DEFAULT_RACE_SETTINGS, type RaceSettings } from "@/race-setup/domain/race-settings";
 import type { RandomSource } from "@/shared/domain/math";
@@ -14,8 +18,10 @@ import type {
   HudSnapshot,
   LiveTelemetry,
   MessageTone,
+  PitUiState,
   RacePhase,
   RaceUiState,
+  WeatherInfo,
 } from "./race-ui-state";
 
 const STEP = 1 / 120; // fixed physics step
@@ -34,6 +40,8 @@ const ATTRACT_SETTINGS: RaceSettings = {
   difficulty: "medium",
   gridSlot: "random",
   circuit: DEFAULT_RACE_SETTINGS.circuit,
+  startTyre: "auto",
+  mandatoryStop: false,
 };
 
 type Listener = () => void;
@@ -46,6 +54,51 @@ const infoOf = (circuit: Circuit): CircuitInfo => ({
   climb: Math.max(...circuit.elevation) - Math.min(...circuit.elevation),
   tunnels: circuit.tunnels.length,
 });
+
+const NO_WEATHER: WeatherInfo = {
+  kind: "clear",
+  label: WEATHER.clear.label,
+  precipitation: "none",
+  surface: "Seca",
+  temperature: 20,
+  outlook: [],
+  recommended: "medium",
+};
+
+function weatherInfoOf(race: Race, theme: Circuit["theme"], laps: number): WeatherInfo {
+  const { kind, conditions, outlook } = race.weather;
+  const spec = WEATHER[kind];
+  return {
+    kind,
+    label: spec.label,
+    precipitation: spec.precipitation,
+    surface: describeSurface(conditions, theme),
+    temperature: Math.round(conditions.temperature),
+    outlook: outlook.slice(0, 3).map((o) => ({ label: WEATHER[o.kind].label, chance: o.chance })),
+    recommended: race.attractMode ? bestCompound(conditions, Math.max(1, laps), race.lapKm) : race.recommendedCompound(),
+  };
+}
+
+function pitUiOf(race: Race): PitUiState {
+  const { pit } = race.player;
+  return {
+    requested: pit.requested,
+    phase: pit.phase,
+    canRequest: race.playerCanPit,
+    choosing: pit.waitingForChoice,
+    choiceSecondsLeft: Math.max(0, CHOICE_TIMEOUT - pit.choiceWait),
+    stops: pit.stops,
+    advice: race.advisor.advice,
+    rule: !race.mandatoryStop
+      ? "off"
+      : race.player.dryCompounds.size >= 2
+        ? "done"
+        : race.wetSeen
+          ? "waived"
+          : "pending",
+    exitLight: race.crew.exitLight,
+  };
+}
 
 /**
  * Orchestrates a play session: attract mode behind the menu, the start
@@ -71,6 +124,9 @@ export class RaceSession {
   private finishedFor = 0;
   private resultsTimer = 0;
   private messageId = 0;
+  private menuWeatherTimer = 0;
+  /** Which call from the pit wall has been announced on the radio already. */
+  private adviceKey = "";
 
   constructor(
     private readonly view: RaceView,
@@ -87,6 +143,8 @@ export class RaceSession {
       phase: "menu",
       settings: DEFAULT_RACE_SETTINGS,
       circuit: infoOf(this.circuit),
+      weather: NO_WEATHER, // replaced as soon as the first scene is loaded, just below
+      pit: null,
       hud: null,
       startLights: { lit: 0, visible: false },
       message: null,
@@ -120,6 +178,7 @@ export class RaceSession {
     const settings = { ...this.state.settings, ...patch };
     if (isSameCircuitSelection(settings.circuit, this.circuitSelection)) {
       this.setState({ settings });
+      this.setState({ weather: this.weatherInfo() }); // the recommended tyre depends on the race length
       return;
     }
     this.circuitSelection = settings.circuit;
@@ -128,15 +187,19 @@ export class RaceSession {
     this.view.setCircuit(this.circuit);
     this.enterMenu(); // reloads the attract-mode race on the new circuit
     this.setState({ settings, circuit: infoOf(this.circuit) });
+    this.setState({ weather: this.weatherInfo() });
   };
 
   /** Starts a race with the current settings. Call from a user gesture (audio). */
   startRace = (): void => {
     const { settings } = this.state;
     this.sound.start();
-    this.loadRace(Race.create(this.circuit, settings, { random: this.random }));
+    // The menu shows the weather of the scene behind it, so that is the weather the race starts in.
+    const weather = this.state.phase === "menu" ? this.race.weather.kind : pickStartWeather(this.circuit.theme, this.random);
+    this.loadRace(Race.create(this.circuit, settings, { random: this.random, weather }));
     this.startSequence = new StartSequence(this.random);
     this.finishedFor = 0;
+    this.adviceKey = "";
     this.controls.clearActions();
     this.setState({
       phase: "countdown",
@@ -144,7 +207,27 @@ export class RaceSession {
       message: null,
       startLights: { lit: 0, visible: true },
       hud: this.buildHud(),
+      weather: this.weatherInfo(),
+      pit: pitUiOf(this.race),
     });
+    if (this.race.mandatoryStop) this.showMessage("Regla F1: usa dos compuestos distintos · B para pedir boxes", "info", 4.5);
+  };
+
+  /** Asks the team for a pit stop on the next lap, or cancels the request. */
+  togglePit = (): void => {
+    if (this.state.phase !== "racing" && this.state.phase !== "countdown") return;
+    const player = this.race.player;
+    if (player.pit.active) return this.showMessage("Ya estás en boxes", "info", 1.5);
+    const wasRequested = player.pit.requested;
+    if (!this.race.togglePlayerPit()) return this.showMessage("Boxes cerrados", "info", 1.5);
+    this.showMessage(wasRequested ? "Parada cancelada" : "BOX, BOX: entras en boxes al final de la vuelta", "info", 2.2);
+    this.setState({ pit: pitUiOf(this.race) });
+  };
+
+  /** Picks the tyres to fit while stopped in the box. */
+  chooseTyre = (compound: Compound): void => {
+    this.race.choosePlayerTyre(compound);
+    this.setState({ pit: pitUiOf(this.race) });
   };
 
   quitToMenu = (): void => this.enterMenu();
@@ -188,6 +271,7 @@ export class RaceSession {
     this.shake = Math.max(0, this.shake - dt * 2);
 
     if (this.state.phase !== "menu") this.updateRaceUi(dt);
+    else this.refreshMenuWeather(dt);
   }
 
   dispose(): void {
@@ -201,7 +285,35 @@ export class RaceSession {
     this.sound.update(0, 0, false);
     this.loadRace(Race.create(this.circuit, ATTRACT_SETTINGS, { attractMode: true, random: this.random }));
     this.startSequence = null;
-    this.setState({ phase: "menu", hud: null, results: null, message: null, startLights: { lit: 0, visible: false } });
+    this.setState({
+      phase: "menu",
+      hud: null,
+      pit: null,
+      results: null,
+      message: null,
+      startLights: { lit: 0, visible: false },
+      weather: this.weatherInfo(),
+    });
+  }
+
+  /** The team's radio call when the pit wall starts asking for a stop. */
+  private announceAdvice(pit: PitUiState): void {
+    const key = pit.advice ? `${pit.advice.reason}-${pit.advice.compound}` : "";
+    if (key && key !== this.adviceKey) this.showMessage("📻 Radio: «Box, box» · pulsa B", "info", 3);
+    this.adviceKey = key;
+  }
+
+  /** The weather behind the menu keeps moving, so the menu's summary of it is refreshed now and then. */
+  private refreshMenuWeather(dt: number): void {
+    this.menuWeatherTimer -= dt;
+    if (this.menuWeatherTimer > 0) return;
+    this.menuWeatherTimer = 0.7;
+    this.setState({ weather: this.weatherInfo() });
+  }
+
+  private weatherInfo(): WeatherInfo {
+    const laps = this.state.phase === "menu" ? this.state.settings.laps : this.race.lapsLeft(this.race.player);
+    return weatherInfoOf(this.race, this.circuit.theme, laps);
   }
 
   private loadRace(race: Race): void {
@@ -246,9 +358,11 @@ export class RaceSession {
       this.showMessage(this.sound.muted ? "Sonido: OFF" : "Sonido: ON", "info", 1);
     }
     if (c.consumeAction("respawn") && phase === "racing") {
+      if (this.race.player.pit.active) this.race.crew.abandon(this.race.player.car, this.race.player.pit);
       this.race.player.car.respawn();
       this.showMessage("Coche recolocado", "info", 1);
     }
+    if (c.consumeAction("pit")) this.togglePit();
     if (c.consumeAction("start") && phase === "menu") this.startRace();
     c.clearActions();
   }
@@ -263,6 +377,11 @@ export class RaceSession {
         break;
       case "final-lap":
         if (entry.isPlayer) this.showMessage("ÚLTIMA VUELTA", "big", 2.5);
+        break;
+      case "penalty":
+        if (entry.isPlayer) {
+          this.showMessage(`Penalización +${event.seconds} s: no usaste dos compuestos distintos`, "info", 5);
+        }
         break;
       case "finished":
         if (entry.isPlayer) {
@@ -301,7 +420,9 @@ export class RaceSession {
     this.hudTimer -= dt;
     if (this.hudTimer <= 0) {
       this.hudTimer = HUD_INTERVAL;
-      this.setState({ hud: this.buildHud() });
+      const pit = pitUiOf(this.race);
+      this.announceAdvice(pit);
+      this.setState({ hud: this.buildHud(), weather: this.weatherInfo(), pit });
     }
 
     if (phase === "finished") {
@@ -332,12 +453,19 @@ export class RaceSession {
       wrongWay: phase === "racing" && race.isPlayerWrongWay(),
       slipstream: player.car.tow,
       dirtyAir: player.car.dirtyAir,
+      tyre: {
+        compound: player.car.tyre.compound,
+        wear: Math.min(1, player.car.tyre.wear),
+        grip: player.car.gripFactor,
+      },
       tower: standings.map(({ entry, gap }) => ({
         position: entry.position,
         code: entry.driver.code,
         color: entry.driver.color,
         isPlayer: entry.isPlayer,
         gap,
+        tyre: entry.car.tyre.compound,
+        inPit: entry.pit.active,
       })),
     };
   }

@@ -1,4 +1,5 @@
 import { DEFAULT_CIRCUIT_SELECTION, type CircuitSelection } from "@/circuit/domain/circuit-selection";
+import type { Compound } from "@/tyres/domain/tyre";
 
 export type Difficulty = "easy" | "medium" | "hard";
 export type GridSlot = "pole" | "middle" | "back" | "random";
@@ -10,6 +11,10 @@ export interface RaceSettings {
   difficulty: Difficulty;
   gridSlot: GridSlot;
   circuit: CircuitSelection;
+  /** Tyres to start on; "auto" fits the best set for the conditions. */
+  startTyre: Compound | "auto";
+  /** F1 rule: use two different dry compounds in a dry race (a 20 s penalty otherwise). Applies from 3 laps. */
+  mandatoryStop: boolean;
 }
 
 export const DEFAULT_RACE_SETTINGS: RaceSettings = {
@@ -18,6 +23,8 @@ export const DEFAULT_RACE_SETTINGS: RaceSettings = {
   difficulty: "medium",
   gridSlot: "back",
   circuit: DEFAULT_CIRCUIT_SELECTION,
+  startTyre: "auto",
+  mandatoryStop: true,
 };
 
 /** Ranges bots are drawn from: cornering skill and top-speed factor. */

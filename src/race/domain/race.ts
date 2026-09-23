@@ -1,10 +1,16 @@
 import { BotDriver } from "@/ai-driver/domain/bot-driver";
+import { chooseStartCompound, TyreStrategy } from "@/ai-driver/domain/tyre-strategy";
 import type { Circuit } from "@/circuit/domain/circuit";
 import type { CarControls } from "@/race-car/domain/car-controls";
 import { RaceCar } from "@/race-car/domain/race-car";
+import { PitAdvisor } from "@/pit-stop/domain/pit-advisor";
+import { PitCrew } from "@/pit-stop/domain/pit-stop";
 import { updateWakes } from "@/race-car/domain/slipstream";
 import { DIFFICULTY_LEVELS, type RaceSettings } from "@/race-setup/domain/race-settings";
 import { randomBetween, shuffle, type RandomSource } from "@/shared/domain/math";
+import { DRY_COMPOUNDS, type MandatoryStop } from "@/tyres/domain/pit-decision";
+import { bestCompound, rankCompounds, Tyre, type Compound } from "@/tyres/domain/tyre";
+import { WeatherSystem, type WeatherKind } from "@/weather/domain/weather";
 import { resolveCarCollisions } from "./car-collisions";
 import { DRIVER_ROSTER, PLAYER_DRIVER } from "./driver";
 import { RaceEntry } from "./race-entry";
@@ -12,7 +18,8 @@ import { RaceEntry } from "./race-entry";
 export type RaceEvent =
   | { type: "fastest-lap"; entry: RaceEntry; lapTime: number }
   | { type: "final-lap"; entry: RaceEntry }
-  | { type: "finished"; entry: RaceEntry; position: number };
+  | { type: "finished"; entry: RaceEntry; position: number }
+  | { type: "penalty"; entry: RaceEntry; seconds: number };
 
 /** Interval to the leader, as shown on a timing tower. */
 export type Gap =
@@ -44,7 +51,19 @@ export class Race {
   fastestLap = Infinity;
   fastestBy: RaceEntry | null = null;
 
-  private readonly bots: BotDriver[];
+  /** Conditions on the track, changing with the weather; every car reads the same object. */
+  readonly weather: WeatherSystem;
+  readonly crew: PitCrew;
+  /** The team's board for the player: when a stop is worth it, it says so. */
+  readonly advisor = new PitAdvisor();
+  /** F1 rule: use two different dry compounds in a dry race. */
+  readonly mandatoryStop: boolean;
+  /** Set once the track has been wet or covered: the rule no longer applies. */
+  wetSeen = false;
+  /** Seconds added for breaking the two-compound rule. */
+  static readonly RULE_PENALTY = 20;
+  readonly lapKm: number;
+  private readonly bots: { entry: RaceEntry; driver: BotDriver; strategy: TyreStrategy; stopFromLaps: number }[];
   /** Takes over the player's car in attract mode and after the chequered flag. */
   private readonly playerBot: BotDriver;
   /** Time the leader first reached each GAP_BUCKET of distance. */
@@ -55,10 +74,16 @@ export class Race {
     private readonly circuit: Circuit,
     readonly totalLaps: number,
     readonly attractMode: boolean,
+    mandatoryStop: boolean,
     entries: RaceEntry[],
-    bots: BotDriver[],
+    bots: { entry: RaceEntry; driver: BotDriver; strategy: TyreStrategy; stopFromLaps: number }[],
+    weather: WeatherSystem,
     random: RandomSource,
   ) {
+    this.weather = weather;
+    this.mandatoryStop = mandatoryStop && !attractMode && totalLaps >= 3;
+    this.lapKm = circuit.length / 1000;
+    this.crew = new PitCrew(circuit, random, () => this.recommendedCompound());
     this.entries = entries;
     this.cars = entries.map((e) => e.car);
     this.player = entries.find((e) => e.isPlayer)!;
@@ -69,8 +94,15 @@ export class Race {
   static create(
     circuit: Circuit,
     settings: RaceSettings,
-    { attractMode = false, random = Math.random }: { attractMode?: boolean; random?: RandomSource } = {},
+    {
+      attractMode = false,
+      random = Math.random,
+      weather: startWeather,
+    }: { attractMode?: boolean; random?: RandomSource; weather?: WeatherKind } = {},
   ): Race {
+    const weather = new WeatherSystem(circuit.theme, random, startWeather);
+    const lapKm = circuit.length / 1000;
+    const planLaps = attractMode ? 3 : settings.laps;
     const level = DIFFICULTY_LEVELS[settings.difficulty];
     const count = settings.rivals + 1;
     const slots = { pole: 0, middle: Math.floor(count / 2), back: count - 1 } as const;
@@ -79,16 +111,85 @@ export class Race {
 
     const rivals = shuffle(DRIVER_ROSTER, random).slice(0, settings.rivals);
     const entries: RaceEntry[] = [];
-    const bots: BotDriver[] = [];
+    const bots: { entry: RaceEntry; driver: BotDriver; strategy: TyreStrategy; stopFromLaps: number }[] = [];
     let next = 0;
     for (let slot = 0; slot < count; slot++) {
       const isPlayer = slot === playerSlot;
       const car = new RaceCar(circuit, isPlayer ? 1 : randomBetween(level.topSpeed, random));
       car.placeAt(circuit.length - GRID_FIRST_ROW - slot * GRID_SPACING, slot % 2 ? GRID_LATERAL : -GRID_LATERAL);
-      entries.push(new RaceEntry(isPlayer ? PLAYER_DRIVER : rivals[next++], car, slot + 1, isPlayer));
-      if (!isPlayer) bots.push(new BotDriver(car, circuit, randomBetween(level.skill, random), random));
+      car.conditions = weather.conditions;
+      const compound =
+        isPlayer && settings.startTyre !== "auto"
+          ? settings.startTyre
+          : isPlayer
+            ? bestCompound(weather.conditions, planLaps, lapKm)
+            : chooseStartCompound(weather.conditions, planLaps, lapKm, random);
+      car.tyre = new Tyre(compound);
+      const entry = new RaceEntry(isPlayer ? PLAYER_DRIVER : rivals[next++], car, slot + 1, isPlayer);
+      entries.push(entry);
+      if (!isPlayer) {
+        const driver = new BotDriver(car, circuit, randomBetween(level.skill, random), random);
+        // Each bot picks its own lap for the mandatory stop, so they do not all pit together.
+        const stopFromLaps = planLaps * randomBetween([0.3, 0.6], random);
+        bots.push({ entry, driver, strategy: new TyreStrategy(car, entry.pit, lapKm, random), stopFromLaps });
+      }
     }
-    return new Race(circuit, attractMode ? Infinity : settings.laps, attractMode, entries, bots, random);
+    return new Race(circuit, attractMode ? Infinity : settings.laps, attractMode, settings.mandatoryStop, entries, bots, weather, random);
+  }
+
+  /** How far a car has gone, in laps. */
+  lapsRun(entry: RaceEntry): number {
+    return Math.max(0, entry.progress) / this.circuit.length;
+  }
+
+  /** Where a car stands on the two-compound rule. */
+  stopRule(entry: RaceEntry, fromLaps: number): MandatoryStop {
+    return { needed: this.mandatoryStop && !this.wetSeen && entry.dryCompounds.size < 2, fromLaps, used: entry.dryCompounds };
+  }
+
+  /** Laps still to run for a car, as a fraction. */
+  lapsLeft(entry: RaceEntry): number {
+    return this.totalLaps - Math.max(0, entry.progress) / this.circuit.length;
+  }
+
+  /** The pit lane is closed before the first lap and on the last one. */
+  private canPit(entry: RaceEntry): boolean {
+    return !this.attractMode && !entry.finished && entry.lap >= 1 && entry.lap < this.totalLaps;
+  }
+
+  get playerCanPit(): boolean {
+    return this.canPit(this.player);
+  }
+
+  /**
+   * Tyre the team would fit the player: the best for the conditions over the
+   * rest of the race, and a different dry one while the mandatory stop is owed.
+   */
+  recommendedCompound(): Compound {
+    const laps = Math.max(1, this.lapsLeft(this.player));
+    const { conditions } = this.weather;
+    const rule = this.stopRule(this.player, 0);
+    if (rule.needed && conditions.water <= 0.12 && conditions.loose <= 0.2) {
+      const other = rankCompounds(conditions, laps, this.lapKm).find((r) => DRY_COMPOUNDS.includes(r.compound) && !rule.used.has(r.compound));
+      if (other) return other.compound;
+    }
+    return bestCompound(conditions, laps, this.lapKm);
+  }
+
+  /** Asks for a pit stop on the next lap, or cancels the request; false when not allowed now. */
+  togglePlayerPit(): boolean {
+    const { pit } = this.player;
+    if (pit.active) return false;
+    if (!pit.requested && !this.canPit(this.player)) return false;
+    pit.requested = !pit.requested;
+    this.advisor.clear(); // the board is answered
+    return true;
+  }
+
+  /** The player's pick for the tyres to fit while stopped in the box. */
+  choosePlayerTyre(compound: Compound): void {
+    const { pit } = this.player;
+    if (pit.waitingForChoice) pit.compound = compound;
   }
 
   /** Grid slot positions, so the view can paint the grid boxes. */
@@ -105,11 +206,26 @@ export class Race {
    */
   step(dt: number, green: boolean, playerControls: CarControls): void {
     const { cars, player } = this;
+    this.weather.step(dt);
+    if (this.weather.conditions.water > 0.3 || this.weather.conditions.loose > 0.3) this.wetSeen = true;
     if (green) {
       updateWakes(cars);
-      for (const bot of this.bots) bot.update(dt, cars, this.time);
-      if (this.attractMode || player.finished) this.playerBot.update(dt, cars, this.time);
-      else Object.assign(player.car.controls, playerControls);
+      this.crew.observe(this.entries);
+      for (const { entry, driver, strategy, stopFromLaps } of this.bots) {
+        if (entry.finished && entry.pit.active) this.crew.abandon(entry.car, entry.pit);
+        entry.noteTyre();
+        if (this.crew.update(dt, entry, this.canPit(entry), this.entries)) continue;
+        driver.update(dt, cars, this.time);
+        if (!this.attractMode) strategy.update(dt, this.lapsLeft(entry), this.lapsRun(entry), this.stopRule(entry, stopFromLaps));
+      }
+      if (this.attractMode || player.finished) {
+        if (player.finished && player.pit.active) this.crew.abandon(player.car, player.pit);
+        this.playerBot.update(dt, cars, this.time);
+      } else {
+        player.noteTyre();
+        if (!this.crew.update(dt, player, this.canPit(player), this.entries)) Object.assign(player.car.controls, playerControls);
+        this.advisor.update(dt, player.car, player.pit, this.canPit(player), this.lapsLeft(player), this.lapsRun(player), this.lapKm, this.stopRule(player, this.totalLaps * 0.4));
+      }
 
       for (const car of cars) car.update(dt);
       resolveCarCollisions(cars);
@@ -153,6 +269,10 @@ export class Race {
       entry.finishTime = t;
       const position = this.entries.filter((e) => e.finished).length;
       this.events.push({ type: "finished", entry, position });
+      if (this.mandatoryStop && !this.wetSeen && entry.dryCompounds.size < 2) {
+        entry.penalty = Race.RULE_PENALTY;
+        this.events.push({ type: "penalty", entry, seconds: entry.penalty });
+      }
     } else if (entry.lap === this.totalLaps && this.totalLaps > 1) {
       this.events.push({ type: "final-lap", entry });
     }
@@ -167,7 +287,7 @@ export class Race {
   /** Finished cars by finish time, then everyone else by distance covered. */
   standings(): Standing[] {
     const order = [...this.entries].sort((a, b) => {
-      if (a.finished && b.finished) return a.finishTime - b.finishTime;
+      if (a.finished && b.finished) return a.classifiedTime - b.classifiedTime;
       if (a.finished !== b.finished) return a.finished ? -1 : 1;
       return b.progress - a.progress;
     });
@@ -182,7 +302,7 @@ export class Race {
     return order.map((entry, i): Standing => {
       if (i === 0) return { entry, gap: { kind: "leader", finished: entry.finished } };
       if (entry.finished) {
-        return { entry, gap: { kind: "time", seconds: entry.finishTime - leader.finishTime, precise: true } };
+        return { entry, gap: { kind: "time", seconds: entry.classifiedTime - leader.classifiedTime, precise: true } };
       }
       const behind = leader.progress - entry.progress;
       if (!leader.finished && behind > L) return { entry, gap: { kind: "laps", laps: Math.floor(behind / L) } };

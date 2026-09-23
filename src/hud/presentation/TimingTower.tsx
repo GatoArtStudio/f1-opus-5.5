@@ -1,5 +1,6 @@
 import type { TowerRow } from "@/race/application/race-ui-state";
 import { toCssColor } from "@/shared/presentation/format";
+import { TyreBadge } from "@/tyres/presentation/TyreBadge";
 import { formatGap } from "./format-gap";
 import styles from "./hud.module.css";
 
@@ -19,7 +20,8 @@ export function TimingTower({ lap, totalLaps, rows }: { lap: number; totalLaps: 
             <b>{row.position}</b>
             <i style={{ background: toCssColor(row.color) }} />
             <span>{row.code}</span>
-            <em>{formatGap(row.gap)}</em>
+            <TyreBadge compound={row.tyre} size={16} />
+            {row.inPit ? <em className={styles.pitTag}>PIT</em> : <em>{formatGap(row.gap)}</em>}
           </li>
         ))}
       </ol>

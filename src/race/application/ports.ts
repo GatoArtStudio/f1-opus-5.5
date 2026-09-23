@@ -2,7 +2,7 @@ import type { Circuit } from "@/circuit/domain/circuit";
 import type { CarControls } from "@/race-car/domain/car-controls";
 import type { Race } from "../domain/race";
 
-export type GameAction = "pause" | "camera" | "mute" | "respawn" | "start";
+export type GameAction = "pause" | "camera" | "mute" | "respawn" | "start" | "pit";
 
 /** Human input source (keyboard, gamepad…). */
 export interface PlayerControls {

@@ -1,8 +1,12 @@
 import type { Circuit } from "@/circuit/domain/circuit";
 import { CAR_SPECS } from "@/race-car/domain/car-specs";
 import type { RaceCar } from "@/race-car/domain/race-car";
+import { steerToward } from "@/race-car/domain/steering";
 import { clamp, type RandomSource } from "@/shared/domain/math";
 import { computeSpeedProfile } from "./speed-profile";
+
+/** Seconds a bot may sit stuck on the grass before being recovered onto the track. */
+const BEACHED_LIMIT = 6;
 
 /** How a bot reacts to a car sitting in its slipstream. */
 export const DEFENCE = {
@@ -45,12 +49,17 @@ export const SLIPSTREAM_ATTACK = {
  * recovery when stuck or facing the wrong way.
  */
 export class BotDriver {
-  private readonly profile: Float32Array;
+  private profile: Float32Array;
+  /** Grip factor the speed profile was built for, and when it was last checked. */
+  private profileGrip = 1;
+  private profileCheck = 0;
   private avoid = 0; // extra lateral offset used to pass other cars
   private readonly wobblePhase: number;
   private stuckTime = 0;
   private reverseTime = 0;
   private lostTime = 0;
+  /** Seconds spent almost stopped on the grass; past a point the car is put back on the asphalt. */
+  private beachedFor = 0;
   /** Seconds a car has been drafting us / has been gone since. */
   private tailedFor = 0;
   private followerGoneFor = 0;
@@ -67,16 +76,31 @@ export class BotDriver {
   constructor(
     private readonly car: RaceCar,
     private readonly circuit: Circuit,
-    skill: number,
+    private readonly skill: number,
     private readonly random: RandomSource = Math.random,
   ) {
-    this.profile = computeSpeedProfile(circuit, {
-      grip: CAR_SPECS.grip * skill,
-      brake: CAR_SPECS.brakeDecel * 0.8 * skill,
-      topSpeed: car.topSpeed,
-      accel: CAR_SPECS.engineAccel,
-    });
+    this.profileGrip = car.gripFactor;
+    this.profile = this.buildProfile(car.gripFactor);
     this.wobblePhase = random() * 100;
+  }
+
+  /** Speed profile for the grip the tyres and track give: bots slow down when it rains. */
+  private buildProfile(gripFactor: number): Float32Array {
+    return computeSpeedProfile(this.circuit, {
+      grip: CAR_SPECS.grip * this.skill * gripFactor,
+      brake: CAR_SPECS.brakeDecel * 0.8 * this.skill * (0.5 + 0.5 * Math.min(1.05, gripFactor)),
+      topSpeed: this.car.topSpeed,
+      accel: CAR_SPECS.engineAccel * (0.6 + 0.4 * Math.min(1, gripFactor)),
+    });
+  }
+
+  /** Rebuilds the speed profile when the grip has moved enough to matter. */
+  private refreshProfile(time: number): void {
+    if (time - this.profileCheck < 0.5) return;
+    this.profileCheck = time;
+    if (Math.abs(this.car.gripFactor - this.profileGrip) < 0.02) return;
+    this.profileGrip = this.car.gripFactor;
+    this.profile = this.buildProfile(this.profileGrip);
   }
 
   /** Defensive moves made against drafting cars so far. */
@@ -86,6 +110,7 @@ export class BotDriver {
 
   update(dt: number, cars: readonly RaceCar[], time: number): void {
     const { car, circuit: c } = this;
+    this.refreshProfile(time);
     const v = Math.max(car.speed, 0);
     const i = car.index;
     const room = c.halfWidth - 1.5;
@@ -136,12 +161,7 @@ export class BotDriver {
     const la = c.wrap(i + Math.round((9 + v * 0.42) / c.ds));
     const wobble = Math.sin(time * 0.3 + this.wobblePhase) * 0.5;
     const off = clamp(c.lineOffset[la] + this.avoid + wobble, -c.halfWidth + 1.3, c.halfWidth - 1.3);
-    const dx = c.px[la] + c.rx[la] * off - car.x;
-    const dz = c.pz[la] + c.rz[la] * off - car.z;
-    const sh = Math.sin(car.heading), ch = Math.cos(car.heading);
-    const alpha = Math.atan2(dx * -ch + dz * sh, dx * sh + dz * ch);
-    const wheel = Math.atan((2 * CAR_SPECS.wheelBase * Math.sin(alpha)) / Math.hypot(dx, dz));
-    let steer = clamp(wheel / (CAR_SPECS.maxSteer / (1 + v / 20)), -1, 1);
+    let steer = steerToward(car, c.px[la] + c.rx[la] * off, c.pz[la] + c.rz[la] * off, v);
 
     // Speed from the profile, anticipating slightly ahead.
     let target = profileTarget;
@@ -171,6 +191,12 @@ export class BotDriver {
       throttle = 0;
       brake = 1;
       steer = -steer;
+    }
+    // Beached on the grass (e.g. after spinning off with the wrong tyres): put back on the track.
+    this.beachedFor = car.surface === "grass" && v < 4 ? this.beachedFor + dt : 0;
+    if (this.beachedFor > BEACHED_LIMIT) {
+      car.respawn();
+      this.beachedFor = 0;
     }
     // Hopelessly lost (e.g. facing backwards off track): reset.
     const facing = Math.cos(car.heading - c.headingAt(i));

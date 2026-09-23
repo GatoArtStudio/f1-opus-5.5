@@ -15,6 +15,7 @@ const ACTION_KEYS: Record<GameAction, string[]> = {
   mute: ["KeyM"],
   respawn: ["KeyR"],
   start: ["Enter"],
+  pit: ["KeyB"],
 };
 
 const SCROLL_KEYS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"]);

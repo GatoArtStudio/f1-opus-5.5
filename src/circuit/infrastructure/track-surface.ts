@@ -49,7 +49,8 @@ function ribbon(
   return g;
 }
 
-export function buildRoad(scene: THREE.Object3D, circuit: Circuit, palette: CircuitPalette, anisotropy: number): void {
+/** Returns the asphalt material so weather can wet it or cover it. */
+export function buildRoad(scene: THREE.Object3D, circuit: Circuit, palette: CircuitPalette, anisotropy: number): THREE.MeshStandardMaterial {
   const hw = circuit.halfWidth;
   const tex = canvasTexture(256, (g, s) => {
     paintNoise(g, s, palette.asphalt, 0.22, 14000);
@@ -57,10 +58,8 @@ export function buildRoad(scene: THREE.Object3D, circuit: Circuit, palette: Circ
     g.fillRect(0, 0, 6, s);
     g.fillRect(s - 6, 0, 6, s);
   }, anisotropy);
-  const road = new THREE.Mesh(
-    ribbon(circuit, () => -hw, () => hw, 0.02, 10),
-    new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85, metalness: 0.05, depthWrite: false, ...ON_GROUND }),
-  );
+  const material = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85, metalness: 0.05, depthWrite: false, ...ON_GROUND });
+  const road = new THREE.Mesh(ribbon(circuit, () => -hw, () => hw, 0.02, 10), material);
   road.receiveShadow = true;
   road.renderOrder = FLAT_RENDER_ORDER.road;
   scene.add(road);
@@ -72,6 +71,7 @@ export function buildRoad(scene: THREE.Object3D, circuit: Circuit, palette: Circ
   );
   line.renderOrder = FLAT_RENDER_ORDER.marks;
   scene.add(line);
+  return material;
 }
 
 export function buildKerbs(scene: THREE.Object3D, circuit: Circuit, palette: CircuitPalette): void {

@@ -6,6 +6,9 @@ import type { RaceCar } from "@/race-car/domain/race-car";
 import { CarModel } from "@/race-car/infrastructure/car-model";
 import type { RaceView, RenderFrame } from "../application/ports";
 import { Race } from "../domain/race";
+import { PitLane } from "@/pit-stop/domain/pit-lane";
+import { PitCrewView } from "@/pit-stop/infrastructure/pit-crew-view";
+import { WeatherEffects } from "@/weather/infrastructure/weather-effects";
 import { CameraRig } from "./camera-rig";
 
 const MAX_GRID = 14;
@@ -35,6 +38,9 @@ export class ThreeRaceView implements RaceView {
   private scenery: CircuitScenery | null = null;
   private sceneryRoot: THREE.Group | null = null;
   private readonly rig: CameraRig;
+  private readonly effects: WeatherEffects;
+  private circuit: Circuit | null = null;
+  private crewView: PitCrewView | null = null;
   private models = new Map<RaceCar, CarModel>();
   private shownRace: Race | null = null;
   private readonly resizeObserver: ResizeObserver;
@@ -52,6 +58,17 @@ export class ThreeRaceView implements RaceView {
     this.scene.fog = this.fog;
     this.camera = new THREE.PerspectiveCamera(68, 1, 0.3, 6000);
     this.rig = new CameraRig(this.camera);
+    this.effects = new WeatherEffects(this.scene, this.camera, () =>
+      this.scenery
+        ? {
+            fog: this.fog,
+            hemisphere: this.hemisphere,
+            sun: this.sun,
+            skyMaterial: this.scenery.skyMaterial,
+            roadMaterial: this.scenery.roadMaterial,
+          }
+        : null,
+    );
 
     this.hemisphere = new THREE.HemisphereLight(0xdcecff, 0x3d5a2a, 1.1);
     this.scene.add(this.hemisphere);
@@ -72,10 +89,12 @@ export class ThreeRaceView implements RaceView {
       this.scene.remove(this.sceneryRoot);
       disposeTree(this.sceneryRoot);
     }
+    this.circuit = circuit;
     const root = (this.sceneryRoot = new THREE.Group());
     this.scene.add(root);
     this.scenery = buildCircuitScenery(root, circuit, this.renderer, Race.gridSlots(circuit, MAX_GRID));
     this.applyAtmosphere(this.scenery.palette);
+    this.effects.setCircuit(this.scenery.palette, circuit.theme);
   }
 
   private applyAtmosphere({ fog, light }: CircuitPalette): void {
@@ -84,9 +103,7 @@ export class ThreeRaceView implements RaceView {
     this.fog.far = fog.far;
     this.hemisphere.color.setHex(light.hemiSky);
     this.hemisphere.groundColor.setHex(light.hemiGround);
-    this.hemisphere.intensity = light.hemiIntensity;
-    this.sun.color.setHex(light.sun);
-    this.sun.intensity = light.sunIntensity;
+    this.sun.color.setHex(light.sun); // weather scales the intensities each frame
     this.renderer.toneMappingExposure = light.exposure;
   }
 
@@ -99,6 +116,8 @@ export class ThreeRaceView implements RaceView {
       this.scene.add(model.root);
       this.models.set(entry.car, model);
     }
+    this.crewView?.dispose();
+    this.crewView = this.circuit ? new PitCrewView(this.scene, this.circuit, new PitLane(this.circuit), race.entries) : null;
     this.shownRace = race;
     this.rig.snapBehind(race.player.car);
   }
@@ -120,11 +139,15 @@ export class ThreeRaceView implements RaceView {
 
     for (const [car, model] of this.models) {
       model.sync(car, dt);
+      model.root.position.y += PitCrewView.lift(race.entries.find((e) => e.car === car)!.pit); // raised on the jacks
       const d = this.camera.position.distanceTo(this.tmp.set(car.x, 1, car.z));
       model.setLabelVisible(camera !== "attract" && d > 6 && d < 160);
     }
     this.models.get(player)?.setOnboardView(camera === "onboard");
 
+    this.crewView?.update(dt, race.entries);
+    this.scenery?.pitLane.setExitLight(race.crew.exitLight);
+    this.effects.update(dt, race.weather.look, race.weather.conditions);
     const cp = this.camera.position;
     this.sun.position.set(cp.x + 80, cp.y + 140, cp.z + 50);
     this.sun.target.position.set(cp.x, cp.y - 3, cp.z);
@@ -140,6 +163,8 @@ export class ThreeRaceView implements RaceView {
 
   dispose(): void {
     this.resizeObserver.disconnect();
+    this.effects.dispose();
+    this.crewView?.dispose();
     disposeTree(this.scene);
     this.renderer.dispose();
     this.renderer.domElement.remove();

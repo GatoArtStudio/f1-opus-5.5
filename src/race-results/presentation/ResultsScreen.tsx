@@ -53,6 +53,7 @@ export function ResultsScreen({ classification, onRaceAgain, onMenu }: Props) {
                 </td>
                 <td>
                   <ResultCell result={row.result} />
+                  {row.penalty > 0 && <small className={styles.penalty}> (+{row.penalty} s pen.)</small>}
                 </td>
                 <td>
                   {formatLapTime(row.bestLap)}

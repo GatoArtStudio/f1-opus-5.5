@@ -5,6 +5,7 @@ import { createSeededRandom } from "@/shared/domain/seeded-random";
 import { buildBuildings, buildStreetLamps } from "./buildings";
 import { PALETTES, type CircuitPalette } from "./circuit-palette";
 import { buildHorizon } from "./horizon";
+import { buildPitLane, type PitLaneScenery } from "@/pit-stop/infrastructure/pit-lane-model";
 import { buildProps } from "./props";
 import { buildTerrain } from "./terrain-mesh";
 import { buildKerbs, buildRoad, buildStartLine, type GridSlotMark } from "./track-surface";
@@ -13,8 +14,12 @@ import { buildTunnels } from "./tunnel-model";
 
 export interface CircuitScenery {
   startGantry: StartGantry;
+  pitLane: PitLaneScenery;
   /** Sky, fog and light settings the view should apply for this theme. */
   palette: CircuitPalette;
+  /** Materials weather changes: the sky dome and the asphalt. */
+  skyMaterial: THREE.MeshBasicMaterial;
+  roadMaterial: THREE.MeshStandardMaterial;
 }
 
 /** Builds every static object of the circuit into `root`; the same circuit always looks the same. */
@@ -29,13 +34,14 @@ export function buildCircuitScenery(
   const terrain = new Terrain(circuit);
   const random = createSeededRandom(`${circuit.seed}#scenery`);
 
-  buildSky(root, palette.sky);
+  const skyMaterial = buildSky(root, palette.sky);
   buildTerrain(root, terrain, palette, anisotropy);
   buildHorizon(root, terrain, palette, random);
-  buildRoad(root, circuit, palette, anisotropy);
+  const roadMaterial = buildRoad(root, circuit, palette, anisotropy);
   buildKerbs(root, circuit, palette);
   buildBarriers(root, circuit, anisotropy);
   buildStartLine(root, circuit, gridSlots);
+  const pitLane = buildPitLane(root, circuit, anisotropy);
   const startGantry = buildStartGantry(root, circuit);
   buildGrandstands(root, circuit);
   buildTunnels(root, circuit, palette, anisotropy);
@@ -44,5 +50,5 @@ export function buildCircuitScenery(
     buildBuildings(root, circuit, terrain, random, anisotropy);
     buildStreetLamps(root, circuit);
   }
-  return { startGantry, palette };
+  return { startGantry, pitLane, palette, skyMaterial, roadMaterial };
 }

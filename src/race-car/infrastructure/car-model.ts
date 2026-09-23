@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { clamp } from "@/shared/domain/math";
+import { COMPOUND_SPECS, type Compound } from "@/tyres/domain/tyre";
 import type { RaceCar } from "../domain/race-car";
 
 /** Colours and short code painted on a car. */
@@ -152,12 +153,23 @@ export class CarModel {
     tyre.castShadow = true;
     const rim = new THREE.Mesh(geo.rim, paint(0x888888, 0.3, 0.8));
     rim.position.x = side * (front ? 0.18 : 0.22);
-    wheel.add(tyre, rim);
+    // Coloured sidewall ring, as on the real thing: it shows which compound is fitted.
+    const band = new THREE.Mesh(new THREE.RingGeometry(0.26, 0.33, 24).rotateY((side * Math.PI) / 2), this.compoundMaterial);
+    band.position.x = side * (front ? 0.185 : 0.225);
+    wheel.add(tyre, rim, band);
     this.wheels.push(wheel);
     return wheel;
   }
 
+  /** Sidewall colour of the compound currently fitted. */
+  private readonly compoundMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+  private compound: Compound | null = null;
+
   sync(car: RaceCar, dt: number): void {
+    if (car.tyre.compound !== this.compound) {
+      this.compound = car.tyre.compound;
+      this.compoundMaterial.color.setHex(COMPOUND_SPECS[this.compound].color);
+    }
     this.root.position.set(car.x, car.y, car.z);
     this.root.rotation.order = "YXZ";
     this.root.rotation.set(-car.pitch, car.heading, 0); // nose up on climbs

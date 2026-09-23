@@ -2,6 +2,8 @@ import type { Circuit, Surface, TrackPosition } from "@/circuit/domain/circuit";
 import { clamp } from "@/shared/domain/math";
 import type { CarControls } from "./car-controls";
 import { CAR_SPECS, GEAR_TOP_SPEEDS, type Gear } from "./car-specs";
+import { Tyre } from "@/tyres/domain/tyre";
+import type { TrackConditions } from "@/weather/domain/weather";
 import { SLIPSTREAM } from "./slipstream";
 
 const GRAVITY = 9.81;
@@ -39,6 +41,14 @@ export class RaceCar {
   tow = 0;
   towSource: RaceCar | null = null;
   dirtyAir = 0;
+  /** Tyres on the car, the track they run on (shared by every car) and the grip they give right now. */
+  tyre = new Tyre("medium");
+  conditions: TrackConditions = { water: 0, loose: 0, temperature: 25 };
+  gripFactor = 1;
+  /** Share of the available grip being used to corner, 0-1+; wears the tyres. */
+  gLoad = 0;
+  /** Driving down the pit lane, which is asphalt wherever it sits. */
+  inPit = false;
 
   readonly controls: CarControls = { throttle: 0, brake: 0, steer: 0 };
 
@@ -58,6 +68,12 @@ export class RaceCar {
     this.lateral = pr.lateral;
     this.trackDist = pr.dist;
     this.updateRoadHeight();
+  }
+
+  /** Brings the car to a dead stop (parked in a pit box). */
+  halt(): void {
+    this.vx = this.vz = this.speed = 0;
+    this.steerAngle = 0;
   }
 
   /** Puts the car back on the asphalt, facing the direction of travel. */
@@ -86,23 +102,30 @@ export class RaceCar {
 
   update(dt: number): void {
     const { throttle, brake, steer } = this.controls;
-    this.surface = this.circuit.surfaceAt(this.lateral);
+    this.surface = this.inPit ? "track" : this.circuit.surfaceAt(this.lateral);
     const surfaceGrip =
-      this.surface === "track" ? CAR_SPECS.grip : this.surface === "kerb" ? CAR_SPECS.kerbGrip : CAR_SPECS.grassGrip;
-    const grip = surfaceGrip * (1 - SLIPSTREAM.maxGripLoss * this.dirtyAir);
+      this.surface === "track"
+        ? CAR_SPECS.grip
+        : this.surface === "kerb"
+          ? CAR_SPECS.kerbGrip * (1 - 0.3 * this.conditions.water) // wet paint is slippery
+          : CAR_SPECS.grassGrip;
+    this.gripFactor = this.tyre.grip(this.conditions);
+    const grip = surfaceGrip * this.gripFactor * (1 - SLIPSTREAM.maxGripLoss * this.dirtyAir);
 
     let sh = Math.sin(this.heading), ch = Math.cos(this.heading);
     let vf = this.vx * sh + this.vz * ch;
     let vl = this.vx * -ch + this.vz * sh;
 
-    // Longitudinal forces.
+    // Longitudinal forces; poor grip also costs traction and braking.
+    const traction = 0.6 + 0.4 * Math.min(1, this.gripFactor);
+    const braking = 0.5 + 0.5 * Math.min(1.05, this.gripFactor);
     let a = 0;
     if (throttle > 0) {
-      if (vf > -0.5) a += throttle * CAR_SPECS.engineAccel * Math.max(0, 1 - (vf / this.topSpeed) ** 2);
+      if (vf > -0.5) a += throttle * CAR_SPECS.engineAccel * traction * Math.max(0, 1 - (vf / this.topSpeed) ** 2);
       else a += throttle * CAR_SPECS.brakeDecel;
     }
     if (brake > 0) {
-      if (vf > 0.5) a -= brake * CAR_SPECS.brakeDecel;
+      if (vf > 0.5) a -= brake * CAR_SPECS.brakeDecel * braking;
       else if (vf > -CAR_SPECS.reverseSpeed) a -= brake * 7;
     }
     a -= Math.sign(vf) * (0.4 + 0.0009 * vf * vf * (1 - SLIPSTREAM.maxDragReduction * this.tow));
@@ -136,6 +159,8 @@ export class RaceCar {
     this.x += this.vx * dt;
     this.z += this.vz * dt;
     this.wheelSpin += (vf / CAR_SPECS.wheelRadius) * dt;
+    this.gLoad = clamp(Math.abs(vf * yaw) / Math.max(grip, 1), 0, 1.5);
+    this.tyre.advance(dt, vf, this.gLoad, this.conditions);
 
     this.updateTrackPosition();
     this.collideWalls();

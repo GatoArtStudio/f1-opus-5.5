@@ -3,7 +3,7 @@
 import { useState, type FormEvent, type KeyboardEvent } from "react";
 import { normalizeSeed, randomSeed } from "@/circuit/domain/circuit-seed";
 import { PRESET_CIRCUITS, type PresetCircuitId } from "@/circuit/domain/circuit-selection";
-import type { CircuitInfo, CircuitOutline } from "@/race/application/race-ui-state";
+import type { CircuitInfo, CircuitOutline, WeatherInfo } from "@/race/application/race-ui-state";
 import overlay from "@/shared/presentation/overlay.module.css";
 import {
   LAP_CHOICES,
@@ -13,6 +13,7 @@ import {
   type RaceSettings,
 } from "../domain/race-settings";
 import { CircuitPreview } from "./CircuitPreview";
+import { ConditionsPanel } from "./ConditionsPanel";
 import styles from "./main-menu.module.css";
 
 const DIFFICULTY_LABELS: Record<Difficulty, string> = { easy: "Fácil", medium: "Media", hard: "Difícil" };
@@ -29,11 +30,12 @@ interface Props {
   settings: RaceSettings;
   circuit: CircuitInfo;
   outline: CircuitOutline;
+  weather: WeatherInfo;
   onChange(patch: Partial<RaceSettings>): void;
   onStart(): void;
 }
 
-export function MainMenu({ settings, circuit, outline, onChange, onStart }: Props) {
+export function MainMenu({ settings, circuit, outline, weather, onChange, onStart }: Props) {
   const selection = settings.circuit;
   const activeSeed = selection.kind === "generated" ? selection.seed : "";
   // What the seed field shows while typing; only applied on Enter / blur.
@@ -123,6 +125,16 @@ export function MainMenu({ settings, circuit, outline, onChange, onStart }: Prop
             {circuit.climb >= 1 && ` · Desnivel ${Math.round(circuit.climb)} m`}
             {circuit.tunnels > 0 && ` · ${circuit.tunnels} ${circuit.tunnels === 1 ? "túnel" : "túneles"}`}
           </p>
+          <label className={styles.wide}>
+            Parada obligatoria
+            <select
+              value={settings.mandatoryStop ? "yes" : "no"}
+              onChange={(e) => onChange({ mandatoryStop: e.target.value === "yes" })}
+            >
+              <option value="yes">Sí: dos compuestos distintos (desde 3 vueltas)</option>
+              <option value="no">No</option>
+            </select>
+          </label>
           <label>
             Vueltas
             <select value={settings.laps} onChange={(e) => onChange({ laps: Number(e.target.value) })}>
@@ -172,7 +184,10 @@ export function MainMenu({ settings, circuit, outline, onChange, onStart }: Prop
           <div className={overlay.dim}>Mando compatible: RT acelera, LT frena, stick izquierdo gira.</div>
         </div>
       </form>
-      <CircuitPreview outline={outline} />
+      <div className={styles.side}>
+        <CircuitPreview outline={outline} />
+        <ConditionsPanel weather={weather} value={settings.startTyre} onChange={(startTyre) => onChange({ startTyre })} />
+      </div>
     </div>
   );
 }

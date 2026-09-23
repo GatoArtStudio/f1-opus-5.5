@@ -1,5 +1,9 @@
 import type { Classification } from "@/race-results/domain/classification";
+import type { ExitLight, PitPhase } from "@/pit-stop/domain/pit-stop";
+import type { PitReason } from "@/tyres/domain/pit-decision";
 import type { Gear } from "@/race-car/domain/car-specs";
+import type { Compound } from "@/tyres/domain/tyre";
+import type { Precipitation, WeatherKind } from "@/weather/domain/weather";
 import type { RaceSettings } from "@/race-setup/domain/race-settings";
 import type { Gap } from "../domain/race";
 
@@ -11,6 +15,9 @@ export interface TowerRow {
   color: number;
   isPlayer: boolean;
   gap: Gap;
+  tyre: Compound;
+  /** In the pit lane right now. */
+  inPit: boolean;
 }
 
 /** Everything the HUD shows, refreshed a few times per second. */
@@ -28,6 +35,8 @@ export interface HudSnapshot {
   /** Slipstream the player is in and the dirty air that goes with it, 0-1. */
   slipstream: number;
   dirtyAir: number;
+  /** The player's tyres: wear from 0 (new) to 1 (finished), and grip relative to a fresh medium on a dry track. */
+  tyre: { compound: Compound; wear: number; grip: number };
   tower: TowerRow[];
 }
 
@@ -49,10 +58,41 @@ export interface CircuitInfo {
   tunnels: number;
 }
 
+export interface WeatherInfo {
+  kind: WeatherKind;
+  label: string;
+  precipitation: Precipitation;
+  /** State of the road ("Seca", "Mojada"...) and its temperature in °C. */
+  surface: string;
+  temperature: number;
+  /** What the weather is most likely to do next. */
+  outlook: { label: string; chance: number }[];
+  /** Tyre that suits the conditions best for the rest of the race. */
+  recommended: Compound;
+}
+
+export interface PitUiState {
+  requested: boolean;
+  phase: PitPhase;
+  /** A stop can be requested now (not on the first or last lap, not already in the pit). */
+  canRequest: boolean;
+  /** Stopped in the box, waiting for the player to choose tyres, and how long is left to do so. */
+  choosing: boolean;
+  choiceSecondsLeft: number;
+  stops: number;
+  /** The team is calling the player in ("BOX, BOX"), with the tyre it suggests and why. */
+  advice: { compound: Compound; reason: PitReason } | null;
+  /** The two-compound rule: not in force, still to do, done, or waived because the race turned wet. */
+  rule: "off" | "pending" | "done" | "waived";
+  exitLight: ExitLight;
+}
+
 export interface RaceUiState {
   phase: RacePhase;
   settings: RaceSettings;
   circuit: CircuitInfo;
+  weather: WeatherInfo;
+  pit: PitUiState | null;
   hud: HudSnapshot | null;
   startLights: { lit: number; visible: boolean };
   message: RaceMessage | null;

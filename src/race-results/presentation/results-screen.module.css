@@ -47,3 +47,8 @@
 .fastest {
   color: var(--purple);
 }
+
+.penalty {
+  color: #ff6a5a;
+  font-weight: 700;
+}

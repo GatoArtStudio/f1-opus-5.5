@@ -3,7 +3,8 @@ import type { Circuit } from "@/circuit/domain/circuit";
 import { canvasTexture, FLAT_RENDER_ORDER } from "./canvas-texture";
 import type { CircuitPalette } from "./circuit-palette";
 
-export function buildSky(scene: THREE.Object3D, palette: CircuitPalette["sky"]): void {
+/** Returns the sky material so weather can darken it. */
+export function buildSky(scene: THREE.Object3D, palette: CircuitPalette["sky"]): THREE.MeshBasicMaterial {
   const radius = 4000;
   const geo = new THREE.SphereGeometry(radius, 32, 16);
   const top = new THREE.Color(palette.top), horizon = new THREE.Color(palette.horizon), below = new THREE.Color(palette.below);
@@ -17,12 +18,11 @@ export function buildSky(scene: THREE.Object3D, palette: CircuitPalette["sky"]):
     colors.push(c.r, c.g, c.b);
   }
   geo.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
-  const sky = new THREE.Mesh(
-    geo,
-    new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false }),
-  );
+  const material = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false });
+  const sky = new THREE.Mesh(geo, material);
   sky.renderOrder = FLAT_RENDER_ORDER.sky;
   scene.add(sky);
+  return material;
 }
 
 export function buildBarriers(scene: THREE.Object3D, circuit: Circuit, anisotropy: number): void {

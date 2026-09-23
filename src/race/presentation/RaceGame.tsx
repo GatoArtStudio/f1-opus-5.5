@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { Hud } from "@/hud/presentation/Hud";
 import { ResultsScreen } from "@/race-results/presentation/ResultsScreen";
+import { PitMenu } from "@/pit-stop/presentation/PitMenu";
 import { MainMenu } from "@/race-setup/presentation/MainMenu";
 import type { RaceSession } from "../application/race-session";
 import { createRaceGame } from "../infrastructure/create-race-game";
@@ -40,6 +41,8 @@ export default function RaceGame() {
           {state.phase !== "menu" && state.hud && (
             <Hud
               hud={state.hud}
+              weather={state.weather}
+              pit={state.pit}
               startLights={state.startLights}
               message={state.message}
               outline={session.outline}
@@ -47,7 +50,10 @@ export default function RaceGame() {
             />
           )}
           {state.phase === "menu" && (
-            <MainMenu settings={state.settings} circuit={state.circuit} outline={session.outline} onChange={session.updateSettings} onStart={session.startRace} />
+            <MainMenu settings={state.settings} circuit={state.circuit} outline={session.outline} weather={state.weather} onChange={session.updateSettings} onStart={session.startRace} />
+          )}
+          {state.pit?.choosing && state.phase !== "paused" && (
+            <PitMenu pit={state.pit} recommended={state.weather.recommended} onChoose={session.chooseTyre} />
           )}
           {state.phase === "paused" && (
             <PauseMenu onResume={session.togglePause} onRestart={session.startRace} onQuit={session.quitToMenu} />
