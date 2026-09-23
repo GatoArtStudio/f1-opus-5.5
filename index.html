@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Web Grand Prix — F1 3D</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,400;0,600;0,700;0,900;1,700&display=swap" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.min.js" } }
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+
+  <div id="loading">Cargando circuito…</div>
+
+  <!-- In-race HUD -->
+  <div id="hud" class="hidden">
+    <aside class="tower">
+      <div class="tower-head">
+        <div class="brand">WEB GP</div>
+        <div id="lap" class="lap"></div>
+      </div>
+      <ol id="tower"></ol>
+    </aside>
+
+    <div class="panel minimap-panel">
+      <canvas id="minimap"></canvas>
+    </div>
+
+    <div id="lights" class="lights hidden">
+      <div class="pod"><span class="light"></span><span class="light-b"></span></div>
+      <div class="pod"><span class="light"></span><span class="light-b"></span></div>
+      <div class="pod"><span class="light"></span><span class="light-b"></span></div>
+      <div class="pod"><span class="light"></span><span class="light-b"></span></div>
+      <div class="pod"><span class="light"></span><span class="light-b"></span></div>
+    </div>
+
+    <div id="msg" class="msg"></div>
+    <div id="wrongway" class="wrongway hidden">⟲ DIRECCIÓN CONTRARIA</div>
+
+    <div class="panel position-panel">
+      <div class="pos"><span class="p">P</span><span id="pos">1</span><span id="posTotal" class="total">/8</span></div>
+      <dl class="times">
+        <dt>ACTUAL</dt><dd id="curLap">--:--.---</dd>
+        <dt>ÚLTIMA</dt><dd id="lastLap">--:--.---</dd>
+        <dt>MEJOR</dt><dd id="bestLap" class="best">--:--.---</dd>
+      </dl>
+    </div>
+
+    <div class="panel speedo">
+      <canvas id="rpm"></canvas>
+      <div class="speed-read">
+        <div id="speed" class="speed">0</div>
+        <div class="unit">KM/H</div>
+      </div>
+      <div class="gear-box"><span id="gear">N</span></div>
+    </div>
+
+    <div class="hint">C cámara · R recolocar · M sonido · Esc pausa</div>
+  </div>
+
+  <!-- Main menu -->
+  <div id="menu" class="overlay">
+    <div class="card">
+      <h1><span class="stripe"></span>WEB <em>GRAND PRIX</em></h1>
+      <p class="sub">Carrera de Fórmula 1 en 3D contra la IA</p>
+      <div class="grid-opts">
+        <label>Vueltas
+          <select id="optLaps">
+            <option value="1">1</option><option value="2">2</option><option value="3" selected>3</option>
+            <option value="5">5</option><option value="8">8</option><option value="10">10</option>
+          </select>
+        </label>
+        <label>Rivales
+          <select id="optBots">
+            <option value="3">3</option><option value="5">5</option><option value="7" selected>7</option>
+            <option value="9">9</option><option value="11">11</option>
+          </select>
+        </label>
+        <label>Dificultad
+          <select id="optDiff">
+            <option value="easy">Fácil</option><option value="medium" selected>Media</option><option value="hard">Difícil</option>
+          </select>
+        </label>
+        <label>Salida
+          <select id="optGrid">
+            <option value="pole">Pole position</option><option value="middle">Mitad de parrilla</option>
+            <option value="back" selected>Última posición</option><option value="random">Aleatoria</option>
+          </select>
+        </label>
+      </div>
+      <button id="startBtn" class="btn primary">Empezar carrera ▸</button>
+      <div class="controls">
+        <div><kbd>W</kbd><kbd>↑</kbd> Acelerar</div>
+        <div><kbd>S</kbd><kbd>↓</kbd><kbd>Espacio</kbd> Frenar / marcha atrás</div>
+        <div><kbd>A</kbd><kbd>D</kbd><kbd>←</kbd><kbd>→</kbd> Girar</div>
+        <div><kbd>C</kbd> Cámara · <kbd>R</kbd> Recolocar · <kbd>M</kbd> Sonido · <kbd>Esc</kbd> Pausa</div>
+        <div class="dim">Mando compatible: RT acelera, LT frena, stick izquierdo gira.</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="pause" class="overlay hidden">
+    <div class="card small">
+      <h2>PAUSA</h2>
+      <button id="resumeBtn" class="btn primary">Continuar</button>
+      <button id="restartBtn" class="btn">Reiniciar carrera</button>
+      <button id="quitBtn" class="btn">Menú principal</button>
+    </div>
+  </div>
+
+  <div id="results" class="overlay hidden">
+    <div class="card wide">
+      <h2 id="resultsTitle">Resultados</h2>
+      <table class="results">
+        <thead><tr><th>Pos</th><th>Piloto</th><th>Tiempo</th><th>Mejor vuelta</th><th>Salida</th></tr></thead>
+        <tbody id="resultsBody"></tbody>
+      </table>
+      <div class="row">
+        <button id="againBtn" class="btn primary">Correr de nuevo</button>
+        <button id="menuBtn" class="btn">Menú principal</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
