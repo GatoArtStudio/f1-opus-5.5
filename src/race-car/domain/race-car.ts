@@ -54,6 +54,8 @@ export class RaceCar {
   engineBoost = 1;
   /** Extra push (0-1) for a bot that has fallen behind the player; see `Race`. */
   catchUp = 0;
+  /** How fast this driver wears the tyres compared with the standard (1). */
+  tyreWear = 1;
   /** Share of the available grip being used to corner, 0-1+; wears the tyres. */
   gLoad = 0;
   /** Driving down the pit lane, which is asphalt wherever it sits. */
@@ -169,7 +171,7 @@ export class RaceCar {
     this.z += this.vz * dt;
     this.wheelSpin += (vf / CAR_SPECS.wheelRadius) * dt;
     this.gLoad = clamp(Math.abs(vf * yaw) / Math.max(grip, 1), 0, 1.5);
-    this.tyre.advance(dt, vf, this.gLoad, this.conditions);
+    this.tyre.advance(dt, vf, this.gLoad, this.conditions, this.tyreWear);
 
     this.updateTrackPosition();
     this.collideWalls();

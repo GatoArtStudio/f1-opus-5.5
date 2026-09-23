@@ -33,8 +33,10 @@ export class TyreStrategy {
     private readonly pit: PitStop,
     private readonly lapKm: number,
     private readonly random: RandomSource,
+    /** Scales the delay before acting on a change of weather (a sharp driver reacts sooner). */
+    reactionScale = 1,
   ) {
-    this.reaction = randomBetween(REACTION, random);
+    this.reaction = randomBetween(REACTION, random) * reactionScale;
   }
 
   /** `lapsLeft` is the distance still to run, in laps; `lapsRun` how far it has already gone. */

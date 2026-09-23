@@ -92,10 +92,13 @@ export class Tyre {
     return tyreGrip(this.compound, this.wear, conditions);
   }
 
-  /** Wears the tyre for `dt` seconds at `speed` (m/s) with `load` (0-1+) of its grip in use. */
-  advance(dt: number, speed: number, load: number, conditions: TrackConditions): void {
+  /**
+   * Wears the tyre for `dt` seconds at `speed` (m/s) with `load` (0-1+) of its grip in use;
+   * `care` scales the wear (a gentle driver has less than 1).
+   */
+  advance(dt: number, speed: number, load: number, conditions: TrackConditions, care = 1): void {
     const perMetre = COMPOUND_SPECS[this.compound].wearPerKm / 1000;
-    this.wear = Math.min(MAX_WEAR, this.wear + Math.abs(speed) * dt * perMetre * wearMultiplier(this.compound, conditions) * (0.5 + load));
+    this.wear = Math.min(MAX_WEAR, this.wear + Math.abs(speed) * dt * perMetre * wearMultiplier(this.compound, conditions) * (0.5 + load) * care);
   }
 }
 

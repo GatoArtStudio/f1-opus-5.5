@@ -50,9 +50,46 @@ export interface DrivingStyle {
   braking: number;
   /** Chance of moving out of the way of a car drafting it. */
   defence: number;
+  /** 0-1: how eager it is to go for a gap and stay close to the car ahead. */
+  aggression: number;
+  /** 0-1: how much of its pace it keeps when there is little grip (1 = all of it). */
+  wetSkill: number;
+  /** Slips per lap: a moment running wide in a corner, or lifting off on a straight. */
+  mistakesPerLap: number;
+  /** Seconds it takes to react to the lights going out. */
+  startDelay: number;
+  /** Multiplier on how long it takes to notice a car drafting it (1 = usual). */
+  detection: number;
 }
 
-export const DEFAULT_STYLE: DrivingStyle = { wobble: 0.5, braking: 0.8, defence: DEFENCE.chance };
+export const DEFAULT_STYLE: DrivingStyle = {
+  wobble: 0.5,
+  braking: 0.8,
+  defence: DEFENCE.chance,
+  aggression: 0.5,
+  wetSkill: 1,
+  mistakesPerLap: 0,
+  startDelay: 0,
+  detection: 1,
+};
+
+/** A slip: how long it lasts, and what it does to the bot's speed and steering. */
+const SLIP = {
+  /** Runs wide: less steering and more speed than the corner allows. */
+  wide: { seconds: 1.2, steering: 0.5, speed: 1.06 },
+  /** Lifts off: holds this share of the speed it had when the slip began. */
+  lift: { seconds: 1.5, steering: 1, speed: 0.82 },
+  /** Nothing goes wrong again for this long afterwards (s). */
+  cooldown: 10,
+  /** Seconds into the race before slips can happen, and the speed under which they cannot. */
+  after: 10,
+  minSpeed: 30,
+} as const;
+
+const lerp = (from: number, to: number, t: number) => from + (to - from) * t;
+
+/** Share of cornering grip a driver with no feel for the wet gives up on a soaked track. */
+const WET_HOLD_BACK = 0.16;
 
 /**
  * Drives a RaceCar along the racing line: pure-pursuit steering, a
@@ -64,6 +101,7 @@ export class BotDriver {
   private profile: Float32Array;
   /** Grip factor the speed profile was built for, and when it was last checked. */
   private profileGrip = 1;
+  private profileWetness = 0;
   private profileCheck = 0;
   private avoid = 0; // extra lateral offset used to pass other cars
   private readonly wobblePhase: number;
@@ -84,6 +122,11 @@ export class BotDriver {
   private movesMade = 0;
   /** Time left in which a pull-out from a leader's wake keeps its speed. */
   private slingshotFor = 0;
+  /** A slip in progress, and how long until another is possible. */
+  private slipLeft = 0;
+  private slip: "wide" | "lift" | null = null;
+  private slipSpeed = 0;
+  private slipCooldown = 0;
 
   constructor(
     private readonly car: RaceCar,
@@ -99,20 +142,30 @@ export class BotDriver {
 
   /** Speed profile for the grip the tyres and track give: bots slow down when it rains. */
   private buildProfile(gripFactor: number): Float32Array {
+    // A driver who is poor in the wet holds back more the wetter (or more covered) the track is.
+    const wet = 1 - WET_HOLD_BACK * (1 - this.style.wetSkill) * this.wetness();
     return computeSpeedProfile(this.circuit, {
-      grip: CAR_SPECS.grip * this.skill * gripFactor,
+      grip: CAR_SPECS.grip * this.skill * gripFactor * wet,
       brake: CAR_SPECS.brakeDecel * this.style.braking * this.skill * (0.5 + 0.5 * Math.min(1.12, gripFactor)),
       topSpeed: this.car.topSpeed,
       accel: CAR_SPECS.engineAccel * (0.6 + 0.4 * Math.min(1, gripFactor)) * this.car.engineBoost,
     });
   }
 
-  /** Rebuilds the speed profile when the grip has moved enough to matter. */
+  /** How wet or covered the track is, 0-1. */
+  private wetness(): number {
+    const { water, loose } = this.car.conditions;
+    return clamp(water + loose, 0, 1);
+  }
+
+  /** Rebuilds the speed profile when the grip, or how wet the track is, has moved enough to matter. */
   private refreshProfile(time: number): void {
     if (time - this.profileCheck < 0.5) return;
     this.profileCheck = time;
-    if (Math.abs(this.car.gripFactor - this.profileGrip) < 0.02) return;
+    const wetness = this.wetness();
+    if (Math.abs(this.car.gripFactor - this.profileGrip) < 0.02 && Math.abs(wetness - this.profileWetness) < 0.05) return;
     this.profileGrip = this.car.gripFactor;
+    this.profileWetness = wetness;
     this.profile = this.buildProfile(this.profileGrip);
   }
 
@@ -123,6 +176,11 @@ export class BotDriver {
 
   update(dt: number, cars: readonly RaceCar[], time: number): void {
     const { car, circuit: c } = this;
+    if (time < this.style.startDelay) {
+      // Not away yet: still reacting to the lights.
+      Object.assign(car.controls, { throttle: 0, brake: 0, steer: 0 });
+      return;
+    }
     this.refreshProfile(time);
     const v = Math.max(car.speed, 0);
     const i = car.index;
@@ -158,7 +216,8 @@ export class BotDriver {
       }
       blockGap = gap;
       blockSpeed = other.speed;
-      const passLeft = other.lateral - 3.2, passRight = other.lateral + 3.2;
+      const passOffset = lerp(3.6, 2.8, this.style.aggression); // an aggressive driver passes closer
+      const passLeft = other.lateral - passOffset, passRight = other.lateral + passOffset;
       let target = lat >= 0 ? passLeft : passRight;
       if (lat >= 0 && passLeft <= -room) target = passRight;
       if (lat < 0 && passRight >= room) target = passLeft;
@@ -184,9 +243,18 @@ export class BotDriver {
     const slingshot =
       this.slingshotFor > 0 &&
       blockGap >= SLIPSTREAM_ATTACK.minGap &&
-      v - blockSpeed <= SLIPSTREAM_ATTACK.maxClosingSpeed;
-    if (blockGap < 12 + v * 0.3 && Math.abs(this.avoid - desiredAvoid) > 1 && !slingshot) {
+      v - blockSpeed <= SLIPSTREAM_ATTACK.maxClosingSpeed * lerp(0.7, 1.3, this.style.aggression);
+    const caution = lerp(1.2, 0.8, this.style.aggression); // how far back it starts to wait for the car ahead
+    if (blockGap < (12 + v * 0.3) * caution && Math.abs(this.avoid - desiredAvoid) > 1 && !slingshot) {
       target = Math.min(target, blockSpeed - 1);
+    }
+    // A slip: running wide in a corner, or a lift on a straight.
+    this.updateSlip(dt, v, i, time);
+    if (this.slip === "wide") {
+      steer *= SLIP.wide.steering;
+      target *= SLIP.wide.speed;
+    } else if (this.slip === "lift") {
+      target = Math.min(target, this.slipSpeed);
     }
     let throttle = clamp((target - v) * 0.35 + 0.1, 0, 1);
     let brake = clamp((v - target) * 0.25, 0, 1);
@@ -224,9 +292,27 @@ export class BotDriver {
     car.controls.steer = steer;
   }
 
+  /** Now and then a driver who is not consistent makes a small slip, at a rate that follows their stats. */
+  private updateSlip(dt: number, v: number, index: number, time: number): void {
+    this.slipCooldown = Math.max(0, this.slipCooldown - dt);
+    if (this.slipLeft > 0) {
+      this.slipLeft -= dt;
+      if (this.slipLeft <= 0) this.slip = null;
+      return;
+    }
+    const { car, circuit: c, style } = this;
+    if (style.mistakesPerLap <= 0 || time < SLIP.after || v < SLIP.minSpeed || car.inPit || this.slipCooldown > 0) return;
+    const lapSeconds = c.length / 50;
+    if (this.random() >= (style.mistakesPerLap / lapSeconds) * dt) return;
+    this.slip = Math.abs(c.curv[index]) > 1 / 300 ? "wide" : "lift";
+    this.slipLeft = SLIP[this.slip].seconds;
+    this.slipSpeed = v * SLIP.lift.speed;
+    this.slipCooldown = SLIP.cooldown;
+  }
+
   /** Queue up in the leader's wake on a clear stretch, and pull out once close. */
   private shouldTuckIn(other: RaceCar, gap: number, v: number, straight: boolean): boolean {
-    const passGap = SLIPSTREAM_ATTACK.passGap + v * SLIPSTREAM_ATTACK.passGapPerSpeed;
+    const passGap = (SLIPSTREAM_ATTACK.passGap + v * SLIPSTREAM_ATTACK.passGapPerSpeed) * lerp(1.25, 0.8, this.style.aggression);
     return (
       !this.defending &&
       straight &&
@@ -264,7 +350,7 @@ export class BotDriver {
     if (this.defending && (!straight || this.followerGoneFor > DEFENCE.releaseTime)) this.defending = false;
 
     const canDefend = !this.defending && this.moveAllowed && straight && v > DEFENCE.minSpeed;
-    if (!follower || !canDefend || this.tailedFor < DEFENCE.detectTime || this.retryIn > 0) return;
+    if (!follower || !canDefend || this.tailedFor < DEFENCE.detectTime * this.style.detection || this.retryIn > 0) return;
     if (followerGap < DEFENCE.minFollowerGap) return; // too close to move across safely
     this.tailedFor = 0;
     if (this.random() >= this.style.defence) {

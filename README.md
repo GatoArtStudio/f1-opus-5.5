@@ -45,6 +45,26 @@ Cuatro niveles (`race-setup/domain/race-settings.ts`): Fácil, Media, Difícil y
 
 Todos los circuitos, el fijo y los generados, se dibujan al doble de tamaño (`TRACK_SCALE` en `circuit-layout.ts`): unos 6 a 8 km por vuelta.
 
+## Stats de los pilotos
+
+Cada bot tiene 9 stats de 0 a 100 (`race/domain/driver-stats.ts`): ritmo, curva, frenada, constancia, agresividad, defensa, lluvia, neumáticos y salida. Cada piloto ficticio se inspira en la fama del real cuyo código lleva (el especialista en lluvia, el que cuida los neumáticos, el rapidísimo pero con errores...). Se ven en el menú, en "Parrilla y stats de los pilotos". Solo afectan a los bots; el coche del jugador es siempre el mismo, en cualquier nivel.
+
+En cada carrera las stats cambian un poco (`race/domain/bot-tuning.ts`): una "forma del día" común y algo de ruido en cada una. Cuanto más difícil es el nivel, menos varían, así que los mejores lo son de forma más fiable. El nivel fija la banda de ritmo en la que caen los pilotos, y la stat decide dónde:
+
+| Stat | Efecto |
+|---|---|
+| Ritmo | Velocidad punta, motor y ventaja de coche de Extrema |
+| Curva | Porcentaje del agarre que aprovecha |
+| Frenada | Cuánto frena y hasta qué punto |
+| Constancia | Deriva de su línea y deslices (un momento yendo ancho en curva o levantando el pie en recta) |
+| Agresividad | Cuándo se lanza a adelantar y cuánta distancia acepta |
+| Defensa | Probabilidad y rapidez de esquivar cuando le siguen en su estela |
+| Lluvia | Ritmo que mantiene con la pista mojada o cubierta |
+| Neumáticos | Desgaste más lento y reacción más rápida al cambio de clima |
+| Salida | Retraso al arrancar cuando se apagan los semáforos |
+
+Con las bandas actuales, la diferencia entre el mejor y el peor bot en una vuelta es de un 7 % en Fácil, un 6 % en Media, un 5 % en Difícil y un 4 % en Extrema, y el orden de llegada sigue el valor global sin ser fijo.
+
 ## Clima, neumáticos y boxes
 
 **Clima.** Cada carrera tiene un clima aleatorio (no depende de la seed) que lo decide el tipo de circuito (`weather/domain/weather.ts`). Casi siempre hace buen tiempo, y lo malo cambia según el tema: lluvia y tormenta en bosque, ciudad y volcán; nieve y ventisca en hielo; tormenta de arena en el desierto; lluvia de ceniza en el volcán. El clima evoluciona durante la carrera con una cadena de transiciones, y el menú muestra la tendencia con sus probabilidades. La pista acumula agua o una capa de nieve, arena o ceniza mientras dura, y se seca después.

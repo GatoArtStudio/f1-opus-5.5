@@ -290,3 +290,21 @@
     font-size: 34px;
   }
 }
+
+.gridButton {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 9px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text);
+  background: #1b1d27;
+  border: 1px solid #2c2f3b;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.gridButton:hover {
+  background: #262a36;
+}

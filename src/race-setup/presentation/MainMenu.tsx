@@ -13,6 +13,7 @@ import {
   type RaceSettings,
 } from "../domain/race-settings";
 import { CircuitPreview } from "./CircuitPreview";
+import { DriverGrid } from "./DriverGrid";
 import { ConditionsPanel } from "./ConditionsPanel";
 import styles from "./main-menu.module.css";
 
@@ -41,6 +42,7 @@ export function MainMenu({ settings, circuit, outline, weather, onChange, onStar
   // What the seed field shows while typing; only applied on Enter / blur.
   const [seedDraft, setSeedDraft] = useState(activeSeed);
   const [copied, setCopied] = useState(false);
+  const [showGrid, setShowGrid] = useState(false);
 
   const applySeed = (seed: string) => {
     setSeedDraft(seed);
@@ -176,6 +178,10 @@ export function MainMenu({ settings, circuit, outline, weather, onChange, onStar
           Empezar carrera ▸
         </button>
 
+        <button type="button" className={styles.gridButton} onClick={() => setShowGrid(true)}>
+          Parrilla y stats de los pilotos
+        </button>
+
         <div className={styles.controls}>
           <div><kbd>W</kbd><kbd>↑</kbd> Acelerar</div>
           <div><kbd>S</kbd><kbd>↓</kbd><kbd>Espacio</kbd> Frenar / marcha atrás</div>
@@ -184,6 +190,7 @@ export function MainMenu({ settings, circuit, outline, weather, onChange, onStar
           <div className={overlay.dim}>Mando compatible: RT acelera, LT frena, stick izquierdo gira.</div>
         </div>
       </form>
+      {showGrid && <DriverGrid onClose={() => setShowGrid(false)} />}
       <div className={styles.side}>
         <CircuitPreview outline={outline} />
         <ConditionsPanel weather={weather} value={settings.startTyre} onChange={(startTyre) => onChange({ startTyre })} />

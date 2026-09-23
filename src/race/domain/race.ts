@@ -13,6 +13,8 @@ import { bestCompound, rankCompounds, Tyre, type Compound } from "@/tyres/domain
 import { WeatherSystem, type WeatherKind } from "@/weather/domain/weather";
 import { resolveCarCollisions } from "./car-collisions";
 import { DRIVER_ROSTER, PLAYER_DRIVER } from "./driver";
+import { statsForRace, tuneBot } from "./bot-tuning";
+import { DRIVER_STATS, type DriverStats } from "./driver-stats";
 import { RaceEntry } from "./race-entry";
 
 export type RaceEvent =
@@ -38,6 +40,8 @@ const CATCH_UP_AFTER = 5;
 const CATCH_UP_RAMP = 12;
 /** Speed used to turn a distance behind into seconds (m/s). */
 const CATCH_UP_SPEED = 50;
+/** Stats for a driver with none of their own. */
+const AVERAGE_STATS: DriverStats = { pace: 80, cornering: 80, braking: 80, consistency: 80, aggression: 80, defence: 80, wet: 80, tyres: 80, start: 80 };
 const GRID_FIRST_ROW = 12; // metres behind the line
 const GRID_SPACING = 8;
 const GRID_LATERAL = 3.5;
@@ -121,7 +125,10 @@ export class Race {
     let next = 0;
     for (let slot = 0; slot < count; slot++) {
       const isPlayer = slot === playerSlot;
-      const car = new RaceCar(circuit, isPlayer ? 1 : randomBetween(level.topSpeed, random));
+      // Only bots have stats; the player's car and results are the player's own.
+      const driverInfo = isPlayer ? PLAYER_DRIVER : rivals[next++];
+      const tuning = isPlayer ? null : tuneBot(statsForRace(DRIVER_STATS[driverInfo.code] ?? AVERAGE_STATS, level, random), level, random);
+      const car = new RaceCar(circuit, tuning ? tuning.topSpeed : 1);
       car.placeAt(circuit.length - GRID_FIRST_ROW - slot * GRID_SPACING, slot % 2 ? GRID_LATERAL : -GRID_LATERAL);
       car.conditions = weather.conditions;
       const compound =
@@ -131,16 +138,16 @@ export class Race {
             ? bestCompound(weather.conditions, planLaps, lapKm)
             : chooseStartCompound(weather.conditions, planLaps, lapKm, random);
       car.tyre = new Tyre(compound);
-      const entry = new RaceEntry(isPlayer ? PLAYER_DRIVER : rivals[next++], car, slot + 1, isPlayer);
+      const entry = new RaceEntry(driverInfo, car, slot + 1, isPlayer);
       entries.push(entry);
-      if (!isPlayer) {
-        car.gripBoost = randomBetween(level.grip, random);
-        car.engineBoost = randomBetween(level.engine, random);
-        const style = { wobble: level.wobble, braking: level.braking, defence: level.defence };
-        const driver = new BotDriver(car, circuit, randomBetween(level.skill, random), random, style);
+      if (tuning) {
+        car.gripBoost = tuning.grip;
+        car.engineBoost = tuning.engine;
+        car.tyreWear = tuning.tyreWear;
+        const driver = new BotDriver(car, circuit, tuning.skill, random, tuning.style);
         // Each bot picks its own lap for the mandatory stop, so they do not all pit together.
         const stopFromLaps = planLaps * randomBetween([0.3, 0.6], random);
-        bots.push({ entry, driver, strategy: new TyreStrategy(car, entry.pit, lapKm, random), stopFromLaps });
+        bots.push({ entry, driver, strategy: new TyreStrategy(car, entry.pit, lapKm, random, tuning.reaction), stopFromLaps });
       }
     }
     return new Race(circuit, attractMode ? Infinity : settings.laps, attractMode, settings.mandatoryStop, level.catchUp, entries, bots, weather, random);

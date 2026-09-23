@@ -1,0 +1,156 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(6, 6, 10, 0.72);
+  backdrop-filter: blur(4px);
+}
+
+.card {
+  width: min(980px, 100%);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 22px;
+  background: rgba(14, 15, 22, 0.97);
+  border: 1px solid var(--panel-line);
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.head h2 {
+  margin: 0 0 4px;
+  font-size: 26px;
+  font-weight: 900;
+  font-style: italic;
+}
+
+.head p {
+  margin: 0;
+  max-width: 62ch;
+  font-size: 13px;
+  color: var(--dim);
+}
+
+.close {
+  flex: none;
+  font: inherit;
+  font-weight: 700;
+  color: var(--text);
+  background: #262a36;
+  border: 1px solid #3a3f4f;
+  border-radius: 8px;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+.close:hover {
+  background: #2f3442;
+}
+
+.scroll {
+  overflow: auto;
+  border-top: 1px solid var(--panel-line);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.table th {
+  position: sticky;
+  top: 0;
+  padding: 8px 6px;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--dim);
+  background: rgba(14, 15, 22, 0.98);
+  cursor: help;
+}
+
+.table th[colspan] {
+  text-align: left;
+}
+
+.table td {
+  padding: 5px 6px;
+  border-top: 1px solid var(--panel-line);
+}
+
+.name {
+  white-space: nowrap;
+}
+
+.name i {
+  display: inline-block;
+  width: 4px;
+  height: 14px;
+  margin-right: 8px;
+  vertical-align: middle;
+  border-radius: 2px;
+}
+
+.name span {
+  font-weight: 700;
+}
+
+.code {
+  color: var(--dim);
+  letter-spacing: 1px;
+}
+
+.overall {
+  text-align: center;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.stat {
+  min-width: 46px;
+  text-align: center;
+}
+
+.stat b {
+  display: block;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.bar {
+  display: block;
+  height: 3px;
+  margin-top: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.bar span {
+  display: block;
+  height: 100%;
+}
+
+@media (max-width: 760px) {
+  .card {
+    padding: 14px;
+  }
+
+  .head {
+    flex-direction: column;
+  }
+}

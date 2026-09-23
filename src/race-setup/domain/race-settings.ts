@@ -48,14 +48,21 @@ export interface DifficultyLevel {
   defence: number;
   /** Bots far behind the player get a boost, up to this share of extra grip and power (0 = none). */
   catchUp: number;
+  /**
+   * How much each bot's stats change from one race to the next, in points: a shared "form of the day"
+   * plus a little noise on each stat. Harder levels are steadier, so the best drivers stay the best.
+   */
+  variation: { form: number; each: number };
+  /** Slips per lap for the least consistent driver; steadier ones make far fewer. */
+  mistakes: number;
 }
 
 const NORMAL_CAR = { grip: [1, 1], engine: [1, 1], wobble: 0.5, braking: 0.8, defence: 0.85, catchUp: 0 } as const;
 
 export const DIFFICULTY_LEVELS: Record<Difficulty, DifficultyLevel> = {
-  easy: { ...NORMAL_CAR, skill: [0.8, 0.88], topSpeed: [0.9, 0.95] },
-  medium: { ...NORMAL_CAR, skill: [0.88, 0.95], topSpeed: [0.95, 0.99] },
-  hard: { ...NORMAL_CAR, skill: [0.95, 1.01], topSpeed: [0.99, 1.02] },
+  easy: { ...NORMAL_CAR, skill: [0.7, 0.88], topSpeed: [0.85, 0.95], variation: { form: 4, each: 5 }, mistakes: 0.9 },
+  medium: { ...NORMAL_CAR, skill: [0.8, 0.95], topSpeed: [0.91, 0.99], variation: { form: 3, each: 4 }, mistakes: 0.6 },
+  hard: { ...NORMAL_CAR, skill: [0.92, 1.01], topSpeed: [0.97, 1.02], variation: { form: 2.2, each: 2.8 }, mistakes: 0.4 },
   extreme: {
     skill: [0.99, 1.02],
     topSpeed: [1.04, 1.07],
@@ -65,6 +72,8 @@ export const DIFFICULTY_LEVELS: Record<Difficulty, DifficultyLevel> = {
     braking: 0.92,
     defence: 0.97,
     catchUp: 1,
+    variation: { form: 1.5, each: 2 },
+    mistakes: 0.3,
   },
 };
 
