@@ -10,9 +10,21 @@ npm install
 npm run dev      # desarrollo en http://localhost:3000
 npm run build    # export estático en ./out
 npm run lint
+npm run typecheck
 ```
 
 `next.config.ts` usa `output: "export"`, así que `npm run build` genera archivos estáticos en `out/`. Se pueden servir con cualquier servidor estático, por ejemplo `npx serve out`.
+
+## CI/CD (GitHub Actions)
+
+- **`.github/workflows/ci.yml`**: en cada pull request y en cada push a ramas distintas de `main`, ejecuta `npm ci`, lint, typecheck (`next typegen && tsc`) y build.
+- **`.github/workflows/deploy.yml`**: en cada push a `main` (o a mano desde la pestaña *Actions*), vuelve a ejecutar el CI completo, genera el export estático y lo publica en **GitHub Pages**.
+
+La ruta base del sitio la calcula `actions/configure-pages` y llega a Next.js mediante `PAGES_BASE_PATH` (`basePath` en `next.config.ts`). Con dominio propio queda vacía; sin dominio sería `/<nombre-del-repo>`.
+
+Requisito único en el repositorio: *Settings → Pages → Build and deployment → Source* = **GitHub Actions**.
+
+La versión de Node está fijada en `.nvmrc`.
 
 ## Controles
 
