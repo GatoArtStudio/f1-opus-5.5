@@ -3,8 +3,8 @@ import type { Circuit } from "@/circuit/domain/circuit";
 import { canvasTexture, FLAT_RENDER_ORDER } from "./canvas-texture";
 import type { CircuitPalette } from "./circuit-palette";
 
-/** Returns the sky material so weather can darken it. */
-export function buildSky(scene: THREE.Object3D, palette: CircuitPalette["sky"]): THREE.MeshBasicMaterial {
+/** Returns the sky dome (which the view keeps centred on the camera) and its material (which weather darkens). */
+export function buildSky(scene: THREE.Object3D, palette: CircuitPalette["sky"]): { mesh: THREE.Mesh; material: THREE.MeshBasicMaterial } {
   const radius = 4000;
   const geo = new THREE.SphereGeometry(radius, 32, 16);
   const top = new THREE.Color(palette.top), horizon = new THREE.Color(palette.horizon), below = new THREE.Color(palette.below);
@@ -22,7 +22,7 @@ export function buildSky(scene: THREE.Object3D, palette: CircuitPalette["sky"]):
   const sky = new THREE.Mesh(geo, material);
   sky.renderOrder = FLAT_RENDER_ORDER.sky;
   scene.add(sky);
-  return material;
+  return { mesh: sky, material };
 }
 
 export function buildBarriers(scene: THREE.Object3D, circuit: Circuit, anisotropy: number): void {

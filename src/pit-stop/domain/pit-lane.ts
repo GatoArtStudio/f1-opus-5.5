@@ -35,8 +35,8 @@ const smooth = (t: number) => {
   return c * c * (3 - 2 * c);
 };
 
-/** Boxes along the lane: room for the biggest grid. */
-export const PIT_BOXES = 12;
+/** Boxes along the lane: one per car of the biggest grid. */
+export const PIT_BOXES = 20;
 
 export class PitLane {
   readonly laneEnd: number;

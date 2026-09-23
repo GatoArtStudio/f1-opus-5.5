@@ -1,6 +1,6 @@
 # Web Grand Prix — carreras de F1 en 3D
 
-Juego de Fórmula 1 para un jugador contra la IA, en el navegador, sobre un circuito de 3,8 km.
+Juego de Fórmula 1 para un jugador contra la IA, en el navegador, sobre circuitos de 6 a 8 km.
 Hecho con **Next.js 16** (App Router), **React 19**, **TypeScript**, **three.js** y **CSS** sin frameworks (CSS Modules + una hoja global).
 
 ## Scripts
@@ -38,6 +38,12 @@ La versión de Node está fijada en `.nvmrc`.
 | Sonido on/off | `M` | |
 | Pausa | `Esc` / `P` | |
 | Empezar (desde el menú) | `Enter` | |
+
+## Dificultad y parrilla
+
+Cuatro niveles (`race-setup/domain/race-settings.ts`): Fácil, Media, Difícil y **Extrema**. Los bots de Difícil ya conducen al límite del coche estándar, así que los de Extrema, además, tienen un coche mejor (agarre, motor y velocidad punta), conducen más limpio, frenan más tarde, se defienden casi siempre y, si el jugador se escapa, reciben un empuje extra para recortar la distancia. Son de media un 3-4 % más rápidos por vuelta que un piloto perfecto con el coche estándar. La parrilla admite hasta 19 rivales (20 coches) con pilotos de F1, y hay un box para cada uno.
+
+Todos los circuitos, el fijo y los generados, se dibujan al doble de tamaño (`TRACK_SCALE` en `circuit-layout.ts`): unos 6 a 8 km por vuelta.
 
 ## Clima, neumáticos y boxes
 

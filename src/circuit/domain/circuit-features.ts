@@ -1,6 +1,6 @@
 import { randomBetween, shuffle, type RandomSource } from "@/shared/domain/math";
 import { createSeededRandom } from "@/shared/domain/seeded-random";
-import type { CircuitLayout } from "./circuit-layout";
+import { TRACK_SCALE, type CircuitLayout } from "./circuit-layout";
 import { THEME_IDS, THEME_PROFILES, type ThemeProfile } from "./circuit-theme";
 import { sampleClosedSpline, type SampledLoop } from "./closed-spline";
 import { elevationAt, isInStartZone, type ElevationSpec } from "./elevation-profile";
@@ -12,14 +12,15 @@ const SPACING = 6;
 const MAX_GRADE = 0.09;
 /** A stretch counts as straight enough for a tunnel below this curvature (radius 350 m). */
 const TUNNEL_MAX_CURVATURE = 1 / 350;
-const TUNNEL_LENGTH: readonly [number, number] = [150, 380];
-const TUNNEL_MIN_RUN = 260;
+const TUNNEL_LENGTH: readonly [number, number] = [150 * TRACK_SCALE, 380 * TRACK_SCALE];
+const TUNNEL_MIN_RUN = 260 * TRACK_SCALE;
 /** Keep tunnels clear of corners and of the start zone. */
 const TUNNEL_EDGE_MARGIN = 45;
 const START_ZONE_MARGIN = 80;
 
 function buildElevation(profile: ThemeProfile, length: number, random: RandomSource): ElevationSpec {
-  const peak = randomBetween(profile.elevation, random);
+  // Hills grow with the circuit so the gradients (and how dramatic they look) stay the same.
+  const peak = randomBetween(profile.elevation, random) * TRACK_SCALE;
   const cycles = shuffle([1, 2, 3, 4, 5], random).slice(0, 3);
   const harmonics = cycles.map((c) => ({
     cycles: c,

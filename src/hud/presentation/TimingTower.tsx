@@ -6,7 +6,7 @@ import styles from "./hud.module.css";
 
 export function TimingTower({ lap, totalLaps, rows }: { lap: number; totalLaps: number; rows: TowerRow[] }) {
   return (
-    <aside className={styles.tower}>
+    <aside className={`${styles.tower} ${rows.length > 12 ? styles.towerCompact : ""}`}>
       <div className={styles.towerHead}>
         <div className={styles.brand}>WEB GP</div>
         <div className={styles.lap}>

@@ -19,6 +19,16 @@ export const DRIVER_ROSTER: readonly Driver[] = [
   { code: "BOT", name: "Bottema", color: 0x7a0019, accent: 0x9a9a9a },
   { code: "SAI", name: "Sainz-Ruiz", color: 0x6e1ad8, accent: 0xffffff },
   { code: "LEC", name: "Leclair", color: 0xffe100, accent: 0x111111 },
+  { code: "RUS", name: "Russo", color: 0xc4cad1, accent: 0x00c2b0 },
+  { code: "PIA", name: "Pieri", color: 0xff9a1a, accent: 0x0a2a6b },
+  { code: "STR", name: "Strand", color: 0x0f5a45, accent: 0xd4e157 },
+  { code: "OCO", name: "Ocampo", color: 0x2aa1ff, accent: 0xff4fa3 },
+  { code: "PER", name: "Perales", color: 0x8b1a4a, accent: 0xf2c200 },
+  { code: "ZHO", name: "Zhao", color: 0x39b54a, accent: 0x111111 },
+  { code: "MAG", name: "Magnusson", color: 0xd8d8d8, accent: 0xd8121b },
 ];
+
+/** Most rivals a race can have: a 20-car grid with the player. */
+export const MAX_RIVALS = DRIVER_ROSTER.length;
 
 export const PLAYER_DRIVER: Driver = { code: "YOU", name: "Tú", color: 0xf5f5f5, accent: 0xe10600 };

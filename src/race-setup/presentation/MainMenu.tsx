@@ -16,7 +16,7 @@ import { CircuitPreview } from "./CircuitPreview";
 import { ConditionsPanel } from "./ConditionsPanel";
 import styles from "./main-menu.module.css";
 
-const DIFFICULTY_LABELS: Record<Difficulty, string> = { easy: "Fácil", medium: "Media", hard: "Difícil" };
+const DIFFICULTY_LABELS: Record<Difficulty, string> = { easy: "Fácil", medium: "Media", hard: "Difícil", extreme: "Extrema" };
 const GRID_LABELS: Record<GridSlot, string> = {
   pole: "Pole position",
   middle: "Mitad de parrilla",

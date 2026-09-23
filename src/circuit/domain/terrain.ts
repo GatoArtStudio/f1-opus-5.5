@@ -2,6 +2,7 @@ import { clamp } from "@/shared/domain/math";
 import { createNoise2D, fractalNoise, type Noise2D } from "@/shared/domain/noise";
 import type { Circuit } from "./circuit";
 import { THEME_PROFILES, type ThemeProfile } from "./circuit-theme";
+import { TRACK_SCALE } from "./circuit-layout";
 import { isInStartZone } from "./elevation-profile";
 
 /** Ground stays level with the road this far from the centreline (covers the barriers). */
@@ -106,7 +107,8 @@ export class Terrain {
 
   /** Height of the natural hills alone, ignoring the road. */
   private hills(x: number, z: number): number {
-    const { hills, hillScale } = this.profile;
+    // The natural hills grow with the circuit too, wider more than taller.
+    const hills = this.profile.hills * Math.sqrt(TRACK_SCALE), hillScale = this.profile.hillScale * TRACK_SCALE;
     const rim = Math.min(x - this.extent.minX, this.extent.maxX - x, z - this.extent.minZ, this.extent.maxZ - z);
     return hills * fractalNoise(this.noise, x / hillScale, z / hillScale, 4) * 1.6 * smooth(rim / RIM_FADE);
   }

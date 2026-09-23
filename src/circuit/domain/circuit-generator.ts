@@ -1,6 +1,6 @@
 import { randomBetween, type RandomSource } from "@/shared/domain/math";
 import { createSeededRandom } from "@/shared/domain/seeded-random";
-import { WEB_GP_CIRCUIT, type CircuitLayout } from "./circuit-layout";
+import { scaleLayout, WEB_GP_CIRCUIT, type CircuitLayout } from "./circuit-layout";
 import { addCircuitFeatures } from "./circuit-features";
 import { findLayoutIssue, type LayoutLimits } from "./layout-validation";
 
@@ -66,7 +66,8 @@ export function generateCircuitLayout(seed: string): CircuitLayout {
   const name = `Circuito ${seed}`;
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const layout = buildCandidate(name, createSeededRandom(`${seed}#${attempt}`));
-    if (findLayoutIssue(layout, LIMITS) === null) return addCircuitFeatures(layout, seed);
+    // The shape is judged at its original size and then enlarged, so a seed keeps its shape.
+    if (findLayoutIssue(layout, LIMITS) === null) return addCircuitFeatures(scaleLayout(layout), seed);
   }
-  return addCircuitFeatures({ ...WEB_GP_CIRCUIT, name }, seed);
+  return addCircuitFeatures(scaleLayout({ ...WEB_GP_CIRCUIT, name }), seed);
 }

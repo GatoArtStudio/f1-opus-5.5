@@ -17,7 +17,7 @@ export interface ElevationSpec {
 
 /** The track stays level around the start line: the grid and the stands live there. */
 const FLAT_BEFORE_START = 420;
-const FLAT_AFTER_START = 300;
+const FLAT_AFTER_START = 400; // covers the whole pit lane
 const FLAT_RAMP = 250;
 /** Softens the floor so the profile never dips below the start level. */
 const FLOOR_SOFTNESS = 1.5;

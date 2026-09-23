@@ -7,6 +7,10 @@ import type { TrackConditions } from "@/weather/domain/weather";
 import { SLIPSTREAM } from "./slipstream";
 
 const GRAVITY = 9.81;
+/** What a full catch-up push adds to grip, engine power and top speed. */
+export const CATCH_UP_GRIP = 0.04;
+export const CATCH_UP_ENGINE = 0.08;
+const CATCH_UP_TOP = 0.03;
 
 const scratch: TrackPosition = { index: 0, lateral: 0, dist: 0 };
 
@@ -45,6 +49,11 @@ export class RaceCar {
   tyre = new Tyre("medium");
   conditions: TrackConditions = { water: 0, loose: 0, temperature: 25 };
   gripFactor = 1;
+  /** A better car than the standard one (1 = standard); the harder bots have it. */
+  gripBoost = 1;
+  engineBoost = 1;
+  /** Extra push (0-1) for a bot that has fallen behind the player; see `Race`. */
+  catchUp = 0;
   /** Share of the available grip being used to corner, 0-1+; wears the tyres. */
   gLoad = 0;
   /** Driving down the pit lane, which is asphalt wherever it sits. */
@@ -109,7 +118,7 @@ export class RaceCar {
         : this.surface === "kerb"
           ? CAR_SPECS.kerbGrip * (1 - 0.3 * this.conditions.water) // wet paint is slippery
           : CAR_SPECS.grassGrip;
-    this.gripFactor = this.tyre.grip(this.conditions);
+    this.gripFactor = this.tyre.grip(this.conditions) * this.gripBoost * (1 + CATCH_UP_GRIP * this.catchUp);
     const grip = surfaceGrip * this.gripFactor * (1 - SLIPSTREAM.maxGripLoss * this.dirtyAir);
 
     let sh = Math.sin(this.heading), ch = Math.cos(this.heading);
@@ -117,11 +126,11 @@ export class RaceCar {
     let vl = this.vx * -ch + this.vz * sh;
 
     // Longitudinal forces; poor grip also costs traction and braking.
-    const traction = 0.6 + 0.4 * Math.min(1, this.gripFactor);
-    const braking = 0.5 + 0.5 * Math.min(1.05, this.gripFactor);
+    const traction = (0.6 + 0.4 * Math.min(1, this.gripFactor)) * this.engineBoost * (1 + CATCH_UP_ENGINE * this.catchUp);
+    const braking = 0.5 + 0.5 * Math.min(1.12, this.gripFactor);
     let a = 0;
     if (throttle > 0) {
-      if (vf > -0.5) a += throttle * CAR_SPECS.engineAccel * traction * Math.max(0, 1 - (vf / this.topSpeed) ** 2);
+      if (vf > -0.5) a += throttle * CAR_SPECS.engineAccel * traction * Math.max(0, 1 - (vf / (this.topSpeed * (1 + CATCH_UP_TOP * this.catchUp))) ** 2);
       else a += throttle * CAR_SPECS.brakeDecel;
     }
     if (brake > 0) {

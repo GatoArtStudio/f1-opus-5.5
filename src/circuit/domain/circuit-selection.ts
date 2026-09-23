@@ -1,5 +1,5 @@
 import { generateCircuitLayout } from "./circuit-generator";
-import { WEB_GP_CIRCUIT, type CircuitLayout } from "./circuit-layout";
+import { scaleLayout, WEB_GP_CIRCUIT, type CircuitLayout } from "./circuit-layout";
 
 /** Hand-made circuits offered in the menu. */
 export const PRESET_CIRCUITS = [{ id: "web-gp", name: WEB_GP_CIRCUIT.name, layout: WEB_GP_CIRCUIT }] as const;
@@ -15,7 +15,7 @@ export const DEFAULT_CIRCUIT_SELECTION: CircuitSelection = { kind: "preset", id:
 
 export function resolveCircuitLayout(selection: CircuitSelection): CircuitLayout {
   if (selection.kind === "generated") return generateCircuitLayout(selection.seed);
-  return (PRESET_CIRCUITS.find((p) => p.id === selection.id) ?? PRESET_CIRCUITS[0]).layout;
+  return scaleLayout((PRESET_CIRCUITS.find((p) => p.id === selection.id) ?? PRESET_CIRCUITS[0]).layout);
 }
 
 export function isSameCircuitSelection(a: CircuitSelection, b: CircuitSelection): boolean {

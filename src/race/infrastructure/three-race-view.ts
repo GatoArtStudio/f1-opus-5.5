@@ -11,7 +11,7 @@ import { PitCrewView } from "@/pit-stop/infrastructure/pit-crew-view";
 import { WeatherEffects } from "@/weather/infrastructure/weather-effects";
 import { CameraRig } from "./camera-rig";
 
-const MAX_GRID = 14;
+const MAX_GRID = 20;
 
 /** Releases GPU resources held by every mesh, material and texture under `root`. */
 function disposeTree(root: THREE.Object3D): void {
@@ -149,6 +149,7 @@ export class ThreeRaceView implements RaceView {
     this.scenery?.pitLane.setExitLight(race.crew.exitLight);
     this.effects.update(dt, race.weather.look, race.weather.conditions);
     const cp = this.camera.position;
+    this.scenery?.sky.position.copy(cp); // the sky never gets closer, however far the circuit runs
     this.sun.position.set(cp.x + 80, cp.y + 140, cp.z + 50);
     this.sun.target.position.set(cp.x, cp.y - 3, cp.z);
     this.renderer.render(this.scene, this.camera);

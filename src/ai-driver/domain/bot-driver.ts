@@ -42,6 +42,18 @@ export const SLIPSTREAM_ATTACK = {
   slingshotTime: 1.2,
 } as const;
 
+/** How a bot drives, beyond how fast its car is: what the difficulty level changes. */
+export interface DrivingStyle {
+  /** Sideways drift of its line (m); a cleaner driver drifts less. */
+  wobble: number;
+  /** Share of the car's braking it uses. */
+  braking: number;
+  /** Chance of moving out of the way of a car drafting it. */
+  defence: number;
+}
+
+export const DEFAULT_STYLE: DrivingStyle = { wobble: 0.5, braking: 0.8, defence: DEFENCE.chance };
+
 /**
  * Drives a RaceCar along the racing line: pure-pursuit steering, a
  * pre-computed speed profile for throttle/brake, overtaking (using the
@@ -78,6 +90,7 @@ export class BotDriver {
     private readonly circuit: Circuit,
     private readonly skill: number,
     private readonly random: RandomSource = Math.random,
+    private readonly style: DrivingStyle = DEFAULT_STYLE,
   ) {
     this.profileGrip = car.gripFactor;
     this.profile = this.buildProfile(car.gripFactor);
@@ -88,9 +101,9 @@ export class BotDriver {
   private buildProfile(gripFactor: number): Float32Array {
     return computeSpeedProfile(this.circuit, {
       grip: CAR_SPECS.grip * this.skill * gripFactor,
-      brake: CAR_SPECS.brakeDecel * 0.8 * this.skill * (0.5 + 0.5 * Math.min(1.05, gripFactor)),
+      brake: CAR_SPECS.brakeDecel * this.style.braking * this.skill * (0.5 + 0.5 * Math.min(1.12, gripFactor)),
       topSpeed: this.car.topSpeed,
-      accel: CAR_SPECS.engineAccel * (0.6 + 0.4 * Math.min(1, gripFactor)),
+      accel: CAR_SPECS.engineAccel * (0.6 + 0.4 * Math.min(1, gripFactor)) * this.car.engineBoost,
     });
   }
 
@@ -159,7 +172,7 @@ export class BotDriver {
 
     // Pure pursuit toward a look-ahead point on the (shifted) racing line.
     const la = c.wrap(i + Math.round((9 + v * 0.42) / c.ds));
-    const wobble = Math.sin(time * 0.3 + this.wobblePhase) * 0.5;
+    const wobble = Math.sin(time * 0.3 + this.wobblePhase) * this.style.wobble;
     const off = clamp(c.lineOffset[la] + this.avoid + wobble, -c.halfWidth + 1.3, c.halfWidth - 1.3);
     let steer = steerToward(car, c.px[la] + c.rx[la] * off, c.pz[la] + c.rz[la] * off, v);
 
@@ -254,7 +267,7 @@ export class BotDriver {
     if (!follower || !canDefend || this.tailedFor < DEFENCE.detectTime || this.retryIn > 0) return;
     if (followerGap < DEFENCE.minFollowerGap) return; // too close to move across safely
     this.tailedFor = 0;
-    if (this.random() >= DEFENCE.chance) {
+    if (this.random() >= this.style.defence) {
       this.retryIn = DEFENCE.retryDelay;
       return;
     }

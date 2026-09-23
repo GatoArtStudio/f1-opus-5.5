@@ -3,19 +3,21 @@ import type { Terrain } from "@/circuit/domain/terrain";
 import type { RandomSource } from "@/shared/domain/math";
 import type { CircuitPalette } from "./circuit-palette";
 
-const RING_RADIUS: readonly [number, number] = [1350, 1900];
+/** The ring of mountains starts this far beyond the terrain's corners. */
+const RING_OFFSET: readonly [number, number] = [700, 1300];
 
 /** Distant mountains all around, plus a smoking volcano for the volcanic theme. */
 export function buildHorizon(root: THREE.Object3D, terrain: Terrain, palette: CircuitPalette, random: RandomSource): void {
   const { extent } = terrain;
   const cx = (extent.minX + extent.maxX) / 2, cz = (extent.minZ + extent.maxZ) / 2;
+  const reach = Math.hypot(extent.maxX - extent.minX, extent.maxZ - extent.minZ) / 2;
   const { mountains } = palette;
 
   const rock = new THREE.MeshStandardMaterial({ color: mountains.color, roughness: 1, flatShading: true });
   const cap = mountains.cap === null ? null : new THREE.MeshStandardMaterial({ color: mountains.cap, roughness: 0.9, flatShading: true });
   for (let k = 0; k < mountains.count; k++) {
     const angle = ((k + random() * 0.8) / mountains.count) * Math.PI * 2;
-    const distance = RING_RADIUS[0] + random() * (RING_RADIUS[1] - RING_RADIUS[0]);
+    const distance = reach + RING_OFFSET[0] + random() * (RING_OFFSET[1] - RING_OFFSET[0]);
     const height = mountains.height[0] + random() * (mountains.height[1] - mountains.height[0]);
     const radius = height * (0.9 + random() * 0.9);
     const x = cx + Math.cos(angle) * distance, z = cz + Math.sin(angle) * distance;
@@ -33,11 +35,11 @@ export function buildHorizon(root: THREE.Object3D, terrain: Terrain, palette: Ci
     }
   }
 
-  if (palette.volcano) buildVolcano(root, cx, cz, random);
+  if (palette.volcano) buildVolcano(root, cx, cz, reach + 900, random);
 }
 
-function buildVolcano(root: THREE.Object3D, cx: number, cz: number, random: RandomSource): void {
-  const angle = random() * Math.PI * 2, distance = 1500;
+function buildVolcano(root: THREE.Object3D, cx: number, cz: number, distance: number, random: RandomSource): void {
+  const angle = random() * Math.PI * 2;
   const x = cx + Math.cos(angle) * distance, z = cz + Math.sin(angle) * distance;
   const height = 520, base = 780, craterRadius = 110;
 

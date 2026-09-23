@@ -643,3 +643,19 @@
     opacity: 0.35;
   }
 }
+
+/* A 20-car grid: tighter rows so the tower fits on a laptop screen. */
+.towerCompact {
+  font-size: 12px;
+}
+
+.towerCompact .towerList li {
+  height: 20px;
+  padding-top: 1px;
+  padding-bottom: 1px;
+}
+
+.towerCompact .lap {
+  padding: 2px 10px 3px;
+  font-size: 17px;
+}

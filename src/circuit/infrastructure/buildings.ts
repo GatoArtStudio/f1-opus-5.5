@@ -5,8 +5,9 @@ import type { Terrain } from "@/circuit/domain/terrain";
 import { distanceToTunnel } from "@/circuit/domain/tunnel";
 import type { RandomSource } from "@/shared/domain/math";
 import { canvasTexture } from "./canvas-texture";
+import { sceneryDensity } from "./props";
 
-const BUILDINGS = 170;
+const BASE_BUILDINGS = 170;
 /** Metres of facade covered by one repeat of the window texture. */
 const FACADE_TILE = 16;
 const MIN_GAP_TO_TRACK = 26;
@@ -83,7 +84,8 @@ export function buildBuildings(
   anisotropy: number,
 ): void {
   const footprints: Footprint[] = [];
-  for (let tries = 0; footprints.length < BUILDINGS && tries < BUILDINGS * 60; tries++) {
+  const wanted = Math.round(BASE_BUILDINGS * sceneryDensity(terrain.extent));
+  for (let tries = 0; footprints.length < wanted && tries < wanted * 60; tries++) {
     const i = Math.floor(random() * circuit.n);
     const side = random() < 0.5 ? -1 : 1;
     const width = 18 + random() * 30, depth = 18 + random() * 30;

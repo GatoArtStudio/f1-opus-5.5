@@ -48,9 +48,8 @@ class Strips {
   }
 }
 
-function garageTexture(anisotropy: number): THREE.CanvasTexture {
-  const bays = 12;
-  return canvasTexture(1024, (g, s) => {
+function garageTexture(bays: number, anisotropy: number): THREE.CanvasTexture {
+  return canvasTexture(2048, (g, s) => {
     g.fillStyle = "#8b9099";
     g.fillRect(0, 0, s, s);
     const w = s / bays;
@@ -60,7 +59,7 @@ function garageTexture(anisotropy: number): THREE.CanvasTexture {
       g.fillStyle = k % 2 ? "#e10600" : "#1e78d2"; // team stripe over each door
       g.fillRect(k * w + 8, s * 0.2, w - 16, s * 0.07);
       g.fillStyle = "#e8e8e8";
-      g.font = `bold ${Math.round(s * 0.09)}px system-ui, sans-serif`;
+      g.font = `bold ${Math.round(w * 0.5)}px system-ui, sans-serif`;
       g.textAlign = "center";
       g.fillText(String(k + 1), k * w + w / 2, s * 0.16);
     }
@@ -123,7 +122,7 @@ export function buildPitLane(root: THREE.Object3D, circuit: Circuit, anisotropy:
   // Garages behind the boxes.
   const length = lane.boxCount * PIT.boxSpacing;
   const middle = PIT.firstBox + ((lane.boxCount - 1) * PIT.boxSpacing) / 2;
-  const front = garageTexture(anisotropy);
+  const front = garageTexture(lane.boxCount, anisotropy);
   const facade = new THREE.MeshStandardMaterial({ map: front, roughness: 0.8 });
   const plain = new THREE.MeshStandardMaterial({ color: 0x5c616b, roughness: 0.9 });
   const garage = new THREE.Mesh(new THREE.BoxGeometry(GARAGE.depth, GARAGE.height, length), [facade, plain, plain, plain, plain, plain]);

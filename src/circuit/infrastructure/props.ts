@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import type { Circuit } from "@/circuit/domain/circuit";
 import { isInStartZone } from "@/circuit/domain/elevation-profile";
-import type { Terrain } from "@/circuit/domain/terrain";
+import type { Terrain, TerrainExtent } from "@/circuit/domain/terrain";
 import { distanceToTunnel } from "@/circuit/domain/tunnel";
 import type { RandomSource } from "@/shared/domain/math";
 import type { CircuitPalette, PropKind } from "./circuit-palette";
@@ -133,6 +133,15 @@ function mergeInto(first: THREE.BufferGeometry, others: THREE.BufferGeometry[]):
   return merged;
 }
 
+/** Area of the terrain the scenery counts were tuned for; larger circuits get proportionally more props. */
+const REFERENCE_AREA = 2.4e6;
+
+/** How many times more scenery a terrain of this size needs to look as full as the original circuit. */
+export function sceneryDensity(extent: TerrainExtent): number {
+  const area = (extent.maxX - extent.minX) * (extent.maxZ - extent.minZ);
+  return Math.min(6, Math.max(1, (area / REFERENCE_AREA) ** 0.9));
+}
+
 /** Scatters the theme's trees, rocks and crystals over the terrain, clear of the track. */
 export function buildProps(
   root: THREE.Object3D,
@@ -148,7 +157,9 @@ export function buildProps(
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3();
   const euler = new THREE.Euler(), color = new THREE.Color();
 
-  for (const { kind, count } of palette.props) {
+  const density = sceneryDensity(extent);
+  for (const { kind, count: baseCount } of palette.props) {
+    const count = Math.round(baseCount * density);
     const def = definition(kind, palette);
     const meshes = def.parts.map((part) => {
       const mesh = new THREE.InstancedMesh(part.geometry, part.material, count);

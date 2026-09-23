@@ -7,7 +7,7 @@ import { PitAdvisor } from "@/pit-stop/domain/pit-advisor";
 import { PitCrew } from "@/pit-stop/domain/pit-stop";
 import { updateWakes } from "@/race-car/domain/slipstream";
 import { DIFFICULTY_LEVELS, type RaceSettings } from "@/race-setup/domain/race-settings";
-import { randomBetween, shuffle, type RandomSource } from "@/shared/domain/math";
+import { clamp, randomBetween, shuffle, type RandomSource } from "@/shared/domain/math";
 import { DRY_COMPOUNDS, type MandatoryStop } from "@/tyres/domain/pit-decision";
 import { bestCompound, rankCompounds, Tyre, type Compound } from "@/tyres/domain/tyre";
 import { WeatherSystem, type WeatherKind } from "@/weather/domain/weather";
@@ -33,6 +33,11 @@ export interface Standing {
   gap: Gap;
 }
 
+/** Catch-up: seconds behind the player before a bot starts to get help, and how many more for the full push. */
+const CATCH_UP_AFTER = 5;
+const CATCH_UP_RAMP = 12;
+/** Speed used to turn a distance behind into seconds (m/s). */
+const CATCH_UP_SPEED = 50;
 const GRID_FIRST_ROW = 12; // metres behind the line
 const GRID_SPACING = 8;
 const GRID_LATERAL = 3.5;
@@ -75,6 +80,7 @@ export class Race {
     readonly totalLaps: number,
     readonly attractMode: boolean,
     mandatoryStop: boolean,
+    private readonly catchUp: number,
     entries: RaceEntry[],
     bots: { entry: RaceEntry; driver: BotDriver; strategy: TyreStrategy; stopFromLaps: number }[],
     weather: WeatherSystem,
@@ -128,13 +134,30 @@ export class Race {
       const entry = new RaceEntry(isPlayer ? PLAYER_DRIVER : rivals[next++], car, slot + 1, isPlayer);
       entries.push(entry);
       if (!isPlayer) {
-        const driver = new BotDriver(car, circuit, randomBetween(level.skill, random), random);
+        car.gripBoost = randomBetween(level.grip, random);
+        car.engineBoost = randomBetween(level.engine, random);
+        const style = { wobble: level.wobble, braking: level.braking, defence: level.defence };
+        const driver = new BotDriver(car, circuit, randomBetween(level.skill, random), random, style);
         // Each bot picks its own lap for the mandatory stop, so they do not all pit together.
         const stopFromLaps = planLaps * randomBetween([0.3, 0.6], random);
         bots.push({ entry, driver, strategy: new TyreStrategy(car, entry.pit, lapKm, random), stopFromLaps });
       }
     }
-    return new Race(circuit, attractMode ? Infinity : settings.laps, attractMode, settings.mandatoryStop, entries, bots, weather, random);
+    return new Race(circuit, attractMode ? Infinity : settings.laps, attractMode, settings.mandatoryStop, level.catchUp, entries, bots, weather, random);
+  }
+
+  /**
+   * Harder levels give a bot that has fallen well behind the player an extra push,
+   * so a player who pulls away is still hunted down. Bots ahead of the player get none.
+   */
+  private applyCatchUp(dt: number, entry: RaceEntry): void {
+    const car = entry.car;
+    let target = 0;
+    if (this.catchUp > 0 && !this.attractMode && !this.player.finished && !entry.pit.active) {
+      const secondsBehind = (this.player.progress - entry.progress) / CATCH_UP_SPEED;
+      target = clamp((secondsBehind - CATCH_UP_AFTER) / CATCH_UP_RAMP, 0, 1) * this.catchUp;
+    }
+    car.catchUp += (target - car.catchUp) * Math.min(1, dt * 0.5);
   }
 
   /** How far a car has gone, in laps. */
@@ -214,6 +237,7 @@ export class Race {
       for (const { entry, driver, strategy, stopFromLaps } of this.bots) {
         if (entry.finished && entry.pit.active) this.crew.abandon(entry.car, entry.pit);
         entry.noteTyre();
+        this.applyCatchUp(dt, entry);
         if (this.crew.update(dt, entry, this.canPit(entry), this.entries)) continue;
         driver.update(dt, cars, this.time);
         if (!this.attractMode) strategy.update(dt, this.lapsLeft(entry), this.lapsRun(entry), this.stopRule(entry, stopFromLaps));

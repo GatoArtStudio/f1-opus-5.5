@@ -18,6 +18,7 @@ export interface CircuitScenery {
   /** Sky, fog and light settings the view should apply for this theme. */
   palette: CircuitPalette;
   /** Materials weather changes: the sky dome and the asphalt. */
+  sky: THREE.Mesh;
   skyMaterial: THREE.MeshBasicMaterial;
   roadMaterial: THREE.MeshStandardMaterial;
 }
@@ -34,7 +35,7 @@ export function buildCircuitScenery(
   const terrain = new Terrain(circuit);
   const random = createSeededRandom(`${circuit.seed}#scenery`);
 
-  const skyMaterial = buildSky(root, palette.sky);
+  const { mesh: sky, material: skyMaterial } = buildSky(root, palette.sky);
   buildTerrain(root, terrain, palette, anisotropy);
   buildHorizon(root, terrain, palette, random);
   const roadMaterial = buildRoad(root, circuit, palette, anisotropy);
@@ -50,5 +51,5 @@ export function buildCircuitScenery(
     buildBuildings(root, circuit, terrain, random, anisotropy);
     buildStreetLamps(root, circuit);
   }
-  return { startGantry, pitLane, palette, skyMaterial, roadMaterial };
+  return { startGantry, pitLane, palette, sky, skyMaterial, roadMaterial };
 }

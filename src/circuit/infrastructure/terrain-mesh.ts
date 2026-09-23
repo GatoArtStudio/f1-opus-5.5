@@ -6,7 +6,7 @@ import { canvasTexture, FLAT_RENDER_ORDER, paintNoise } from "./canvas-texture";
 
 const CELL = 14; // metres between terrain vertices
 const TEXTURE_TILE = 9; // metres per repeat of the ground texture
-const FAR_GROUND = 8000;
+const FAR_GROUND_MARGIN = 4000;
 
 const tint = new THREE.Color();
 const rockTint = new THREE.Color();
@@ -106,10 +106,11 @@ export function buildTerrain(
   root.add(ground);
 
   // Far plane beyond the height-field, level with its rim.
+  const farSize = Math.max(extent.maxX - extent.minX, extent.maxZ - extent.minZ) + FAR_GROUND_MARGIN;
   const farTexture = canvasTexture(256, (g, s) => paintNoise(g, s, "#ececec", 0.3, 9000), anisotropy);
-  farTexture.repeat.set(FAR_GROUND / TEXTURE_TILE, FAR_GROUND / TEXTURE_TILE);
+  farTexture.repeat.set(farSize / TEXTURE_TILE, farSize / TEXTURE_TILE);
   const far = new THREE.Mesh(
-    new THREE.PlaneGeometry(FAR_GROUND, FAR_GROUND),
+    new THREE.PlaneGeometry(farSize, farSize),
     new THREE.MeshStandardMaterial({ map: farTexture, color: palette.ground.a, roughness: 1 }),
   );
   far.rotation.x = -Math.PI / 2;

@@ -22,6 +22,19 @@ export interface CircuitLayout {
   readonly tunnels?: readonly TunnelSpan[];
 }
 
+/** Every circuit is drawn at this multiple of the original size: twice as long. */
+export const TRACK_SCALE = 2;
+
+/** The same circuit, `factor` times larger. Width, kerbs and run-off stay as they are. */
+export function scaleLayout(layout: CircuitLayout, factor: number = TRACK_SCALE): CircuitLayout {
+  return {
+    ...layout,
+    controlPoints: layout.controlPoints.map(([x, z]) => [x * factor, z * factor] as const),
+    tunnels: layout.tunnels?.map((t) => ({ from: t.from * factor, to: t.to * factor })),
+    elevation: layout.elevation && { ...layout.elevation, scale: layout.elevation.scale * factor },
+  };
+}
+
 export const WEB_GP_CIRCUIT: CircuitLayout = {
   name: "Web Grand Prix Circuit",
   width: 16,
