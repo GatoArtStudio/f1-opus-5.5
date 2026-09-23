@@ -1,4 +1,5 @@
-import type { Circuit } from "@/circuit/domain/circuit";
+import { Circuit } from "@/circuit/domain/circuit";
+import { isSameCircuitSelection, resolveCircuitLayout, type CircuitSelection } from "@/circuit/domain/circuit-selection";
 import { classifyRace } from "@/race-results/domain/classification";
 import { DEFAULT_RACE_SETTINGS, type RaceSettings } from "@/race-setup/domain/race-settings";
 import type { RandomSource } from "@/shared/domain/math";
@@ -7,6 +8,7 @@ import { Race, type RaceEvent } from "../domain/race";
 import { StartSequence } from "../domain/start-sequence";
 import type { CameraMode, EngineSound, PlayerControls, RaceView } from "./ports";
 import type {
+  CircuitInfo,
   CircuitOutline,
   HudSnapshot,
   LiveTelemetry,
@@ -25,9 +27,18 @@ const CAMERA_MODES: { mode: CameraMode; label: string }[] = [
   { mode: "far-chase", label: "Persecución lejana" },
   { mode: "onboard", label: "Cámara T (onboard)" },
 ];
-const ATTRACT_SETTINGS: RaceSettings = { laps: 1, rivals: 9, difficulty: "medium", gridSlot: "random" };
+const ATTRACT_SETTINGS: RaceSettings = {
+  laps: 1,
+  rivals: 9,
+  difficulty: "medium",
+  gridSlot: "random",
+  circuit: DEFAULT_RACE_SETTINGS.circuit,
+};
 
 type Listener = () => void;
+
+const outlineOf = (circuit: Circuit): CircuitOutline => ({ xs: circuit.px, zs: circuit.pz });
+const infoOf = (circuit: Circuit): CircuitInfo => ({ name: circuit.name, lengthKm: circuit.length / 1000 });
 
 /**
  * Orchestrates a play session: attract mode behind the menu, the start
@@ -35,17 +46,13 @@ type Listener = () => void;
  * fixed time step and publishes UI state for the presentation layer.
  */
 export class RaceSession {
-  private state: RaceUiState = {
-    phase: "menu",
-    settings: DEFAULT_RACE_SETTINGS,
-    hud: null,
-    startLights: { lit: 0, visible: false },
-    message: null,
-    results: null,
-  };
+  private state: RaceUiState;
   private readonly listeners = new Set<Listener>();
   private readonly telemetryListeners = new Set<(t: LiveTelemetry) => void>();
 
+  private circuit: Circuit;
+  private circuitSelection: CircuitSelection;
+  private circuitOutline: CircuitOutline;
   private race!: Race;
   private startSequence: StartSequence | null = null;
   private pausedFrom: RacePhase = "racing";
@@ -59,12 +66,25 @@ export class RaceSession {
   private messageId = 0;
 
   constructor(
-    private readonly circuit: Circuit,
     private readonly view: RaceView,
     private readonly controls: PlayerControls,
     private readonly sound: EngineSound,
     private readonly random: RandomSource = Math.random,
   ) {
+    const { circuit } = DEFAULT_RACE_SETTINGS;
+    this.circuitSelection = circuit;
+    this.circuit = new Circuit(resolveCircuitLayout(circuit));
+    this.circuitOutline = outlineOf(this.circuit);
+    this.view.setCircuit(this.circuit);
+    this.state = {
+      phase: "menu",
+      settings: DEFAULT_RACE_SETTINGS,
+      circuit: infoOf(this.circuit),
+      hud: null,
+      startLights: { lit: 0, visible: false },
+      message: null,
+      results: null,
+    };
     this.enterMenu();
   }
 
@@ -83,13 +103,24 @@ export class RaceSession {
   }
 
   get outline(): CircuitOutline {
-    return { xs: this.circuit.px, zs: this.circuit.pz };
+    return this.circuitOutline;
   }
 
   // ---- commands ----
 
+  /** Changing the circuit rebuilds the track, so it is only meant for the menu. */
   updateSettings = (patch: Partial<RaceSettings>): void => {
-    this.setState({ settings: { ...this.state.settings, ...patch } });
+    const settings = { ...this.state.settings, ...patch };
+    if (isSameCircuitSelection(settings.circuit, this.circuitSelection)) {
+      this.setState({ settings });
+      return;
+    }
+    this.circuitSelection = settings.circuit;
+    this.circuit = new Circuit(resolveCircuitLayout(settings.circuit));
+    this.circuitOutline = outlineOf(this.circuit);
+    this.view.setCircuit(this.circuit);
+    this.enterMenu(); // reloads the attract-mode race on the new circuit
+    this.setState({ settings, circuit: infoOf(this.circuit) });
   };
 
   /** Starts a race with the current settings. Call from a user gesture (audio). */

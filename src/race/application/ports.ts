@@ -1,3 +1,4 @@
+import type { Circuit } from "@/circuit/domain/circuit";
 import type { CarControls } from "@/race-car/domain/car-controls";
 import type { Race } from "../domain/race";
 
@@ -33,6 +34,8 @@ export interface RenderFrame {
 
 /** 3D presentation of a race. */
 export interface RaceView {
+  /** Replaces the circuit being shown. Must be called before the first `showRace`. */
+  setCircuit(circuit: Circuit): void;
   showRace(race: Race): void;
   setStartLights(lit: number): void;
   render(dt: number, frame: RenderFrame): void;

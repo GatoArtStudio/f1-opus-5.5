@@ -32,8 +32,14 @@ export class KeyboardGamepadControls implements PlayerControls {
   }
 
   private onKeyDown = (e: KeyboardEvent) => {
-    // Let form controls in menus keep their keyboard behaviour.
-    if (e.target instanceof HTMLSelectElement) return;
+    // Let form controls in menus keep their keyboard behaviour (e.g. typing a seed).
+    if (
+      e.target instanceof HTMLSelectElement ||
+      e.target instanceof HTMLInputElement ||
+      e.target instanceof HTMLTextAreaElement
+    ) {
+      return;
+    }
     if (SCROLL_KEYS.has(e.code)) e.preventDefault();
     if (!this.down.has(e.code)) this.pressed.add(e.code);
     this.down.add(e.code);

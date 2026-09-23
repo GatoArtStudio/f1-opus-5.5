@@ -58,6 +58,61 @@
   letter-spacing: 0;
 }
 
+.wide {
+  grid-column: 1 / -1;
+}
+
+.seed {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--dim);
+  text-transform: uppercase;
+}
+
+.seedControls {
+  display: flex;
+  gap: 8px;
+}
+
+.seedControls input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text);
+  background: #1b1d27;
+  border: 1px solid #2c2f3b;
+  border-radius: 8px;
+  padding: 9px 10px;
+}
+
+.seedControls button {
+  font: inherit;
+  font-size: 14px;
+  color: var(--text);
+  background: #262a36;
+  border: 1px solid #3a3f4f;
+  border-radius: 8px;
+  padding: 0 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.seedControls button:hover {
+  background: #2f3442;
+}
+
+.circuitInfo {
+  margin: -6px 0 0;
+  font-size: 13px;
+  color: var(--dim);
+}
+
 .start {
   width: 100%;
   font-size: 20px;

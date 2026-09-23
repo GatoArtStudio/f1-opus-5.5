@@ -17,7 +17,7 @@ export interface CircuitScenery {
 
 /** Builds every static object of the circuit into the scene. */
 export function buildCircuitScenery(
-  scene: THREE.Scene,
+  scene: THREE.Object3D,
   circuit: Circuit,
   renderer: THREE.WebGLRenderer,
   gridSlots: readonly GridSlotMark[],

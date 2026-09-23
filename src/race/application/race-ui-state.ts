@@ -37,9 +37,15 @@ export interface RaceMessage {
   seconds: number;
 }
 
+export interface CircuitInfo {
+  name: string;
+  lengthKm: number;
+}
+
 export interface RaceUiState {
   phase: RacePhase;
   settings: RaceSettings;
+  circuit: CircuitInfo;
   hud: HudSnapshot | null;
   startLights: { lit: number; visible: boolean };
   message: RaceMessage | null;

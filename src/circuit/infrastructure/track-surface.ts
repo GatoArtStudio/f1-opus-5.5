@@ -44,7 +44,7 @@ function ribbon(
   return g;
 }
 
-export function buildRoad(scene: THREE.Scene, circuit: Circuit, anisotropy: number): void {
+export function buildRoad(scene: THREE.Object3D, circuit: Circuit, anisotropy: number): void {
   const hw = circuit.halfWidth;
   const tex = canvasTexture(256, (g, s) => {
     paintNoise(g, s, "#3a3b3e", 0.22, 14000);
@@ -69,7 +69,7 @@ export function buildRoad(scene: THREE.Scene, circuit: Circuit, anisotropy: numb
   scene.add(line);
 }
 
-export function buildKerbs(scene: THREE.Scene, circuit: Circuit): void {
+export function buildKerbs(scene: THREE.Object3D, circuit: Circuit): void {
   const N = circuit.n, hw = circuit.halfWidth, kw = circuit.kerbWidth;
   // Kerbs only where the track bends, dilated to cover entry and exit.
   const on = new Uint8Array(N);
@@ -116,7 +116,7 @@ function groundPlate(geometry: THREE.PlaneGeometry, material: THREE.Material, x:
   return m;
 }
 
-export function buildStartLine(scene: THREE.Scene, circuit: Circuit, gridSlots: readonly GridSlotMark[]): void {
+export function buildStartLine(scene: THREE.Object3D, circuit: Circuit, gridSlots: readonly GridSlotMark[]): void {
   const tex = canvasTexture(128, (g, s) => {
     const n = 8;
     for (let y = 0; y < n; y++) {

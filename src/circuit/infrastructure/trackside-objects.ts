@@ -2,7 +2,7 @@ import * as THREE from "three";
 import type { Circuit, TrackPosition } from "@/circuit/domain/circuit";
 import { canvasTexture, FLAT_RENDER_ORDER, paintNoise } from "./canvas-texture";
 
-export function buildSky(scene: THREE.Scene): void {
+export function buildSky(scene: THREE.Object3D): void {
   const radius = 4000;
   const geo = new THREE.SphereGeometry(radius, 32, 16);
   const top = new THREE.Color(0x2f6fc4), horizon = new THREE.Color(0xcfe3f2), below = new THREE.Color(0x9fb8a0);
@@ -24,7 +24,7 @@ export function buildSky(scene: THREE.Scene): void {
   scene.add(sky);
 }
 
-export function buildGround(scene: THREE.Scene, anisotropy: number): void {
+export function buildGround(scene: THREE.Object3D, anisotropy: number): void {
   const tex = canvasTexture(256, (g, s) => {
     paintNoise(g, s, "#4b7d2e", 0.18, 9000);
     g.fillStyle = "rgba(255,255,255,0.05)"; // mowing stripes
@@ -41,7 +41,7 @@ export function buildGround(scene: THREE.Scene, anisotropy: number): void {
   scene.add(ground);
 }
 
-export function buildBarriers(scene: THREE.Scene, circuit: Circuit, anisotropy: number): void {
+export function buildBarriers(scene: THREE.Object3D, circuit: Circuit, anisotropy: number): void {
   // Red/white blocks with a blue advertising band on top.
   const tex = canvasTexture(256, (g, s) => {
     g.fillStyle = "#c62828";
@@ -87,7 +87,7 @@ export interface StartGantry {
   setLit(count: number): void;
 }
 
-export function buildStartGantry(scene: THREE.Scene, circuit: Circuit): StartGantry {
+export function buildStartGantry(scene: THREE.Object3D, circuit: Circuit): StartGantry {
   const i = circuit.indexAt(6);
   const group = new THREE.Group();
   group.position.set(circuit.px[i], 0, circuit.pz[i]);
@@ -135,7 +135,7 @@ export function buildStartGantry(scene: THREE.Scene, circuit: Circuit): StartGan
   };
 }
 
-export function buildGrandstands(scene: THREE.Scene, circuit: Circuit): void {
+export function buildGrandstands(scene: THREE.Object3D, circuit: Circuit): void {
   const crowd = canvasTexture(256, (g, s) => {
     g.fillStyle = "#3a3f4a";
     g.fillRect(0, 0, s, s);
@@ -194,7 +194,7 @@ export function buildGrandstands(scene: THREE.Scene, circuit: Circuit): void {
   }
 }
 
-export function buildTrees(scene: THREE.Scene, circuit: Circuit): void {
+export function buildTrees(scene: THREE.Object3D, circuit: Circuit): void {
   let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
   for (let i = 0; i < circuit.n; i++) {
     minX = Math.min(minX, circuit.px[i]);

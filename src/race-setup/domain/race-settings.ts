@@ -1,3 +1,5 @@
+import { DEFAULT_CIRCUIT_SELECTION, type CircuitSelection } from "@/circuit/domain/circuit-selection";
+
 export type Difficulty = "easy" | "medium" | "hard";
 export type GridSlot = "pole" | "middle" | "back" | "random";
 
@@ -7,6 +9,7 @@ export interface RaceSettings {
   rivals: number;
   difficulty: Difficulty;
   gridSlot: GridSlot;
+  circuit: CircuitSelection;
 }
 
 export const DEFAULT_RACE_SETTINGS: RaceSettings = {
@@ -14,6 +17,7 @@ export const DEFAULT_RACE_SETTINGS: RaceSettings = {
   rivals: 7,
   difficulty: "medium",
   gridSlot: "back",
+  circuit: DEFAULT_CIRCUIT_SELECTION,
 };
 
 /** Ranges bots are drawn from: cornering skill and top-speed factor. */

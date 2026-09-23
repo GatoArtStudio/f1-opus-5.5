@@ -9,23 +9,34 @@ import { CameraRig } from "./camera-rig";
 
 const MAX_GRID = 14;
 
+/** Releases GPU resources held by every mesh, material and texture under `root`. */
+function disposeTree(root: THREE.Object3D): void {
+  root.traverse((obj) => {
+    const mesh = obj as THREE.Mesh;
+    mesh.geometry?.dispose();
+    const materials = Array.isArray(mesh.material) ? mesh.material : mesh.material ? [mesh.material] : [];
+    for (const m of materials) {
+      for (const value of Object.values(m)) if (value instanceof THREE.Texture) value.dispose();
+      m.dispose();
+    }
+  });
+}
+
 /** three.js implementation of the race view: scene, lights, cars, camera. */
 export class ThreeRaceView implements RaceView {
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene = new THREE.Scene();
   private readonly camera: THREE.PerspectiveCamera;
   private readonly sun: THREE.DirectionalLight;
-  private readonly scenery: CircuitScenery;
+  private scenery: CircuitScenery | null = null;
+  private sceneryRoot: THREE.Group | null = null;
   private readonly rig: CameraRig;
   private models = new Map<RaceCar, CarModel>();
   private shownRace: Race | null = null;
   private readonly resizeObserver: ResizeObserver;
   private readonly tmp = new THREE.Vector3();
 
-  constructor(
-    private readonly container: HTMLElement,
-    circuit: Circuit,
-  ) {
+  constructor(private readonly container: HTMLElement) {
     const renderer = (this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" }));
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
@@ -46,11 +57,19 @@ export class ThreeRaceView implements RaceView {
     sun.shadow.bias = -0.0005;
     this.scene.add(sun, sun.target);
 
-    this.scenery = buildCircuitScenery(this.scene, circuit, renderer, Race.gridSlots(circuit, MAX_GRID));
-
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(container);
     this.resize();
+  }
+
+  setCircuit(circuit: Circuit): void {
+    if (this.sceneryRoot) {
+      this.scene.remove(this.sceneryRoot);
+      disposeTree(this.sceneryRoot);
+    }
+    const root = (this.sceneryRoot = new THREE.Group());
+    this.scene.add(root);
+    this.scenery = buildCircuitScenery(root, circuit, this.renderer, Race.gridSlots(circuit, MAX_GRID));
   }
 
   showRace(race: Race): void {
@@ -67,7 +86,7 @@ export class ThreeRaceView implements RaceView {
   }
 
   setStartLights(lit: number): void {
-    this.scenery.startGantry.setLit(lit);
+    this.scenery?.startGantry.setLit(lit);
   }
 
   render(dt: number, { race, camera, shake }: RenderFrame): void {
@@ -103,15 +122,7 @@ export class ThreeRaceView implements RaceView {
 
   dispose(): void {
     this.resizeObserver.disconnect();
-    this.scene.traverse((obj) => {
-      const mesh = obj as THREE.Mesh;
-      mesh.geometry?.dispose();
-      const materials = Array.isArray(mesh.material) ? mesh.material : mesh.material ? [mesh.material] : [];
-      for (const m of materials) {
-        for (const value of Object.values(m)) if (value instanceof THREE.Texture) value.dispose();
-        m.dispose();
-      }
-    });
+    disposeTree(this.scene);
     this.renderer.dispose();
     this.renderer.domElement.remove();
   }

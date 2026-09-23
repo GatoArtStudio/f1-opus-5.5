@@ -1,6 +1,9 @@
 "use client";
 
-import type { FormEvent } from "react";
+import { useState, type FormEvent, type KeyboardEvent } from "react";
+import { normalizeSeed, randomSeed } from "@/circuit/domain/circuit-seed";
+import { PRESET_CIRCUITS, type PresetCircuitId } from "@/circuit/domain/circuit-selection";
+import type { CircuitInfo } from "@/race/application/race-ui-state";
 import overlay from "@/shared/presentation/overlay.module.css";
 import {
   LAP_CHOICES,
@@ -19,13 +22,50 @@ const GRID_LABELS: Record<GridSlot, string> = {
   random: "Aleatoria",
 };
 
+const GENERATED = "generated";
+
 interface Props {
   settings: RaceSettings;
+  circuit: CircuitInfo;
   onChange(patch: Partial<RaceSettings>): void;
   onStart(): void;
 }
 
-export function MainMenu({ settings, onChange, onStart }: Props) {
+export function MainMenu({ settings, circuit, onChange, onStart }: Props) {
+  const selection = settings.circuit;
+  const activeSeed = selection.kind === "generated" ? selection.seed : "";
+  // What the seed field shows while typing; only applied on Enter / blur.
+  const [seedDraft, setSeedDraft] = useState(activeSeed);
+  const [copied, setCopied] = useState(false);
+
+  const applySeed = (seed: string) => {
+    setSeedDraft(seed);
+    if (seed !== activeSeed) onChange({ circuit: { kind: "generated", seed } });
+  };
+  const commitSeed = () => {
+    const seed = normalizeSeed(seedDraft);
+    if (seed) applySeed(seed);
+    else setSeedDraft(activeSeed);
+  };
+  const onSeedKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault(); // Enter applies the seed instead of starting the race
+    commitSeed();
+  };
+  const chooseCircuit = (value: string) => {
+    if (value === GENERATED) applySeed(normalizeSeed(seedDraft) || randomSeed());
+    else onChange({ circuit: { kind: "preset", id: value as PresetCircuitId } });
+  };
+  const copySeed = () => {
+    navigator.clipboard?.writeText(activeSeed).then(
+      () => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      },
+      () => {},
+    );
+  };
+
   const submit = (e: FormEvent) => {
     e.preventDefault();
     onStart();
@@ -41,6 +81,44 @@ export function MainMenu({ settings, onChange, onStart }: Props) {
         <p className={styles.subtitle}>Carrera de Fórmula 1 en 3D contra la IA</p>
 
         <div className={styles.options}>
+          <label className={styles.wide}>
+            Circuito
+            <select
+              value={selection.kind === "generated" ? GENERATED : selection.id}
+              onChange={(e) => chooseCircuit(e.target.value)}
+            >
+              {PRESET_CIRCUITS.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+              <option value={GENERATED}>Circuito generado (seed)</option>
+            </select>
+          </label>
+          {selection.kind === "generated" && (
+            <div className={`${styles.seed} ${styles.wide}`}>
+              <label htmlFor="circuit-seed">Seed</label>
+              <div className={styles.seedControls}>
+                <input
+                  id="circuit-seed"
+                  value={seedDraft}
+                  onChange={(e) => setSeedDraft(e.target.value)}
+                  onBlur={commitSeed}
+                  onKeyDown={onSeedKeyDown}
+                  maxLength={24}
+                  spellCheck={false}
+                  autoComplete="off"
+                />
+                <button type="button" onClick={() => applySeed(randomSeed())} title="Generar un circuito nuevo">
+                  🎲 Nuevo
+                </button>
+                <button type="button" onClick={copySeed} title="Copiar la seed para compartirla">
+                  {copied ? "¡Copiada!" : "Copiar"}
+                </button>
+              </div>
+            </div>
+          )}
+          <p className={`${styles.circuitInfo} ${styles.wide}`}>
+            {circuit.name} · {circuit.lengthKm.toFixed(2)} km
+          </p>
           <label>
             Vueltas
             <select value={settings.laps} onChange={(e) => onChange({ laps: Number(e.target.value) })}>
